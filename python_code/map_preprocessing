@@ -1,0 +1,103 @@
+"""
+IMPORTS
+"""
+import cv2 as cv
+import numpy as np
+import time
+from shapely.geometry import Polygon
+import pyvisgraph as vg
+
+
+
+"""
+PARAMETERS
+"""
+verbose = True
+draw_map = True
+measure_time = True
+
+map_path = "../map17.pgm"
+map_saving = "map17.png"
+
+epsilon = 3 # largest error when approximating the contours to get the polygons
+#epsilon = 0.01*cv.arcLength(contour, True)
+
+start = [480.0,410.0] # current robot position
+goal = [550.0,200.0] # destination of robot
+
+font = cv.FONT_HERSHEY_SIMPLEX # font for text
+
+
+
+"""
+PROGRAM
+"""
+# start time measurement
+if measure_time:
+	time_start = time.time()
+
+# load map
+map_original = cv.imread(map_path)
+
+# image pre-processing
+map = cv.cvtColor(map_original, cv.COLOR_BGR2GRAY) # gray scale map
+map = cv.GaussianBlur(map, (3,3), 0) # apply blur filter to remove outliers
+_, map = cv.threshold(map, 160, 255, cv.THRESH_BINARY) # threshold image
+
+# dilation of obstacles to consider robot shape
+kernel = np.ones((17,17), np.uint8)
+map = cv.erode(map, kernel, iterations=1)
+
+# calc. contours of obstacles
+contours, _ = cv.findContours(map, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
+
+# approximate contours and create list with polygons
+polys = []
+for i, contour in enumerate(contours):
+	approx = cv.approxPolyDP(contour, epsilon, True)
+	
+	polys.append([])
+	for p in approx:
+		polys[-1].append(vg.Point(p[0,0],p[0,1]))
+	
+	if draw_map:
+		map_original = cv.drawContours(map_original, [approx], 0, (0,255,0), 1)
+	
+	if verbose:
+		print("contour {} has epsilon {} and length {}"\
+				.format(i, np.round(epsilon,2), np.size(approx)/2))		
+
+# create visibility graph using polygons and calc. shortest path from start to goal		
+graph = vg.VisGraph()
+graph.build(polys)
+path = graph.shortest_path(vg.Point(start[0],start[1]), vg.Point(goal[0],goal[1]))
+
+if verbose:
+	print("Shortest path: {}".format(path))
+
+# draw shortest path
+if draw_map:
+	for i in range(len(path)-1):
+		map_original = cv.line(map_original, (int(path[i].x),int(path[i].y)), \
+										(int(path[i+1].x),int(path[i+1].y)), (255,0,0),1)	
+	cv.putText(map_original,'Start',(int(path[0].x),int(path[0].y)), font, 0.4, \
+					(0,0,255),0,cv.LINE_AA)
+	cv.putText(map_original,'Goal',(int(path[-1].x),int(path[-1].y)), font, 0.4, \
+					(0,0,255),0,cv.LINE_AA)
+		
+# save map
+if draw_map:
+	cv.imwrite(map_saving, map_original)
+	
+# stop time measurement
+if measure_time:
+	time_stop = time.time()
+	print("Running time = {}s, drawing: {}".\
+			format(np.round(time_stop-time_start, 3), draw_map))
+
+
+
+
+
+
+
