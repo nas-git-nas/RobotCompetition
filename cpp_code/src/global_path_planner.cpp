@@ -92,6 +92,7 @@ int main(int argc, char **argv)
    VisibilityGraph visibility_graph;
 	Dijkstra dijkstra;
 	
+	
    
    
   int counter = 0;
@@ -101,16 +102,17 @@ int main(int argc, char **argv)
   		}
   		map.new_data = false;
   		
+  		cv::Point current_position(480.0,410.0); // current robot position
+		cv::Point destination(550.0,200.0); // destination of robot
   		
-  		std::vector<std::vector<cv::Point>> polygons = map.preprocessData();
+  		map.preprocessData(current_position, destination);
   		
-  		std::vector<std::vector<int>> graph;
-  		graph = visibility_graph.calcGraph(map.getNodes(), map.getNodePolygon());
+
+  		visibility_graph.calcGraph(map.getNodes(), map.getNodePolygon());
   		
-  		int start = 1;
-  		int goal = 3;
-  		std::vector<int> shortest_path = dijkstra.calcPath(graph, start, goal);
-  		//map.draw_graph(graph, shortest_path, polygons);
+  		dijkstra.calcPath(visibility_graph.getGraph());
+  		
+  		//map.draw_graph(visibility_graph.getGraph(), dijkstra.getShortestPath());
   		
   		
   		std::cout<<" spinOnce: " << counter << "\n";

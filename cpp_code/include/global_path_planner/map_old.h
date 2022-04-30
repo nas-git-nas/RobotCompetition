@@ -12,21 +12,17 @@
 #ifndef MAP_H // include header file only once
 #define MAP_H
 
-#define MAP_SIZE	100
-#define VERBOSE_MAP false
-#define SAVE_MAP true
-
 // class containing map
 class Map
 {
 	public:
-		/*** VARIABLES ***/
 		std::vector<int8_t> data = std::vector<int8_t>(MAP_SIZE*MAP_SIZE, -2);
-		bool new_data = false;	
+		bool new_data = false;
+		cv::Mat matrix_raw = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8S, -2);
+		cv::Mat matrix_preprocessed = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8S, -2);
+		cv::Mat matrix_graph = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8S, -2);
+		std::vector<cv::Point> obstacles;
 		
-		/*** FUNCTIONS ***/
-		std::vector<cv::Point> getNodes(void);
-		std::vector<int> getNodePolygon(void);
 		void saveRawData(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 		
 		std::vector<std::vector<cv::Point>> preprocessData(void);
@@ -34,19 +30,7 @@ class Map
 		void draw_graph(std::vector<std::vector<int>> &graph, 
 							 std::vector<int> &shortest_path,
 							 std::vector<std::vector<cv::Point>> &polygons);
-
-							 
-	private:
-		/*** VARIABLES ***/
-		cv::Mat map_raw = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8S, -2);
-		cv::Mat map_preprocessed;
-		cv::Mat map_graph;
 		
-		std::vector<cv::Point> nodes;
-		std::vector<int> node_polygon;
-		
-		/*** FUNCTIONS ***/
-
 };
 
 #endif // MAP_H

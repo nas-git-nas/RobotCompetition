@@ -13,13 +13,18 @@
 class VisibilityGraph
 {
 	public:
-		//std::vector<std::vector<cv::Point>> obstacles;
+
+		/*** FUNCTIONS ***/
+		std::vector<std::vector<int>> getGraph(void);
+		
+		void calcGraph(std::vector<cv::Point> nodes, std::vector<int> node_polygon);
+															 
+	private:
+		/*** VARIABLES ***/
 		std::vector<std::vector<int>> graph;
 		std::vector<int> graph_point;
 		
-		std::vector<std::vector<int>> calcGraph(std::vector<cv::Point> nodes, 
-															 std::vector<int> node_polygon);
-		
+		/*** FUNCTIONS ***/		
 		bool verifyVisibilitySamePolygon(int i, int j, std::vector<int> &node_polygon);
 		
 		bool verifyVisibilityDifferentPolygon(int i, int j, std::vector<cv::Point> &nodes, 

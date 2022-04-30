@@ -38,7 +38,7 @@ void Map::saveRawData(const nav_msgs::OccupancyGrid::ConstPtr &msg)
 	}
 }
 
-std::vector<std::vector<cv::Point>> Map::preprocessData(void)
+void Map::preprocessData(cv::Point current_position, cv::Point destination)
 {
 	//cv::Mat kernel = cv::Mat(3, 3, CV_8S, 1);
 	
@@ -87,26 +87,30 @@ std::vector<std::vector<cv::Point>> Map::preprocessData(void)
 	// index called "node_polygon"
 	nodes.clear();
 	node_polygon.clear();
+	
+	nodes.push_back(current_position);
+	nodes.push_back(destination);
+	node_polygon.push_back(0);
+	node_polygon.push_back(1);
+	
 	for(int i=0; i<polygons.size(); i++) {
 		for(int j=0; j<polygons[i].size(); j++) {
 			nodes.push_back(polygons[i][j]);
-			node_polygon.push_back(i);
+			node_polygon.push_back(i+2); // plus two because of current_position and destination
 		}
 	}	
 	
-	return polygons;
+	return;
 }
 
-void Map::draw_graph(std::vector<std::vector<int>> &graph, 
-					 		std::vector<int> &shortest_path,
-					 		std::vector<std::vector<cv::Point>> &polygons)
+void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path)
 {
 	if(SAVE_MAP) {
 		cv::Mat m_gra = map_preprocessed;
 
 		// draw visibility graph lines
 		for(int i=0; i<graph.size(); i++) { // loop through number of graph points
-			for(int j=i+1; j<graph[i].size(); j++) { // loop through number of connection points
+			for(int j=0; j<i; j++) { // loop through number of connection points
 				if(graph[i][j] > 0) {
 					cv::line(m_gra, nodes[i], nodes[j], 
 								cv::Scalar(255,0,0), 1, cv::LINE_4);

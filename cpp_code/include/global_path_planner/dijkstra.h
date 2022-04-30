@@ -7,17 +7,24 @@
 
 
 #define DISTANCE_MAX 10000 //very large number, should be larger than the largest distance
+#define VERBOSE_DIJKSTRA true
 
 class Dijkstra
 {
-public:
-
-	// A utility function to find the vertex with minimum distance value, from
-	// the set of vertices not yet included in shortest path tree
-	int minDistance(int dist[], bool sptSet[], int graph_size);
+	public:
+		/*** FUNCTIONS ***/
+		std::vector<int> getShortestPath(void);
+		
+		void calcPath(std::vector<std::vector<int>> graph);
 	
-	std::vector<int> calcPath(std::vector<std::vector<int>> graph, int start, int goal);
+	private:
+		/*** VARIABLES ***/
+		std::vector<int> shortest_path; // shortest path from start to goal
 	
+		/*** FUNCTIONS ***/
+		// A utility function to find the vertex with minimum distance value, from
+		// the set of vertices not yet included in shortest path tree
+		int minDistance(int dist[], bool sptSet[], int graph_size);	
 };
 
 

@@ -12,8 +12,11 @@
 
 #include "visibility_graph.h"
 
-std::vector<std::vector<int>> VisibilityGraph::calcGraph(std::vector<cv::Point> nodes, 
-																			std::vector<int> node_polygon)
+std::vector<std::vector<int>> VisibilityGraph::getGraph(void){
+	return graph;
+}
+
+void VisibilityGraph::calcGraph(std::vector<cv::Point> nodes, std::vector<int> node_polygon)
 {
 	graph.clear();
 
@@ -87,7 +90,7 @@ std::vector<std::vector<int>> VisibilityGraph::calcGraph(std::vector<cv::Point> 
 		std::cout << std::endl;
 	}
 	
-	return graph;	
+	return;
 }
 
 
