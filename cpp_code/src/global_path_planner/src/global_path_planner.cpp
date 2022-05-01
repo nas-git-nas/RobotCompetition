@@ -96,7 +96,7 @@ int main(int argc, char **argv)
    
    
   int counter = 0;
-  while(true) {
+  while(ros::ok()) {
   		while(!map.new_data) {
   			ros::spinOnce();
   		}
@@ -105,14 +105,16 @@ int main(int argc, char **argv)
   		cv::Point current_position(480.0,410.0); // current robot position
 		cv::Point destination(550.0,200.0); // destination of robot
   		
-  		map.preprocessData(current_position, destination);
+  		if(!map.preprocessData(current_position, destination)) {
+  			std::cout<<"ERROR in Map::preprocessData" << std::endl;
+  		}
   		
 
   		visibility_graph.calcGraph(map.getNodes(), map.getNodePolygon());
   		
-  		dijkstra.calcPath(visibility_graph.getGraph());
-  		
-  		//map.draw_graph(visibility_graph.getGraph(), dijkstra.getShortestPath());
+  		if(dijkstra.calcPath(visibility_graph.getGraph())) {
+  			map.draw_graph(visibility_graph.getGraph(), dijkstra.getShortestPath());
+  		}
   		
   		
   		std::cout<<" spinOnce: " << counter << "\n";

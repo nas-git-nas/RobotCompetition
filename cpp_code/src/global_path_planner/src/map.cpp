@@ -32,39 +32,51 @@ void Map::saveRawData(const nav_msgs::OccupancyGrid::ConstPtr &msg)
 	}
 	new_data = true;
 	
-	if(VERBOSE_MAP) {
+	if(VERBOSE_RAW_DATA) {
 		std::cout << "map: = "<< std::endl << " " 
 					 << map_raw << std::endl << std::endl;
 	}
 }
 
-void Map::preprocessData(cv::Point current_position, cv::Point destination)
+bool Map::preprocessData(cv::Point current_position, cv::Point destination)
 {
-	//cv::Mat kernel = cv::Mat(3, 3, CV_8S, 1);
-	
-
-	cv::Mat m = cv::imread("maps/map15.pgm", cv::IMREAD_GRAYSCALE);
-	cv::Mat m_thr;
+	cv::Mat m_thr = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8UC1, -2);	
 	cv::Mat m_dil;
 	cv::Mat m_pol;
-	if(SAVE_MAP) {
-		cv::imwrite("map.jpg", m);
-	}
 	
 	std::vector<std::vector<cv::Point>> contours;	
 	std::vector<cv::Vec4i> hierarchy;
-
-	// threshold map
-	cv::threshold(m, m_thr, 160, 255, cv::THRESH_BINARY);
+	
+	if(SAVE_MAP) {
+		cv::imwrite("map.jpg", map_raw);
+	}
+	if(VERBOSE_PREPROCESS) {
+		std::cout << "map_raw =" << std::endl << " " << map_raw << std::endl << std::endl;
+	}
+	
+	// transform map_raw to m: from CV_8SC1 (8-bit signed int with 1 channel) to CV_8UC1 (unsigned int)
+	// and threshold pixels directly
+	for(int i=0; i<MAP_SIZE; i++) {
+		for(int j=0; j<MAP_SIZE; j++) {
+			if(map_raw.at<int8_t>(i,j) == -1) {
+				m_thr.at<uint8_t>(i,j) = 255;
+			} else if(map_raw.at<int8_t>(i,j)<=PIXEL_THRESHOLD) {
+				m_thr.at<uint8_t>(i,j) = 255;
+			} else if(map_raw.at<int8_t>(i,j)>PIXEL_THRESHOLD) {
+				m_thr.at<uint8_t>(i,j) = 0;
+			} else { return false; }
+		}
+	}
 	if(SAVE_MAP) {
 		cv::imwrite("map_threshold.jpg", m_thr);
-	}
+	}	
+	//cv::Mat m = cv::imread("maps/map15.pgm", cv::IMREAD_GRAYSCALE);	
+	//cv::threshold(m, m_thr, 160, 255, cv::THRESH_BINARY); // threshold map
 	
 	// expand obstacle by robot size
 	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(11,11));
-	//cv::dilate(mat_thr, mat_dil, kernel);
-
-	cv::erode(m, m_dil, kernel);
+	//cv::dilate(m_thr, m_dil, kernel);
+	cv::erode(m_thr, m_dil, kernel);
 	if(SAVE_MAP) {
 		cv::imwrite("map_erode.jpg", m_dil);
 	}
@@ -100,7 +112,7 @@ void Map::preprocessData(cv::Point current_position, cv::Point destination)
 		}
 	}	
 	
-	return;
+	return true;
 }
 
 void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path)
@@ -122,7 +134,13 @@ void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> short
 		for(int i=0; i<shortest_path.size()-1; i++) {
 			cv::line(m_gra, nodes[shortest_path[i]], nodes[shortest_path[i+1]], 
 						cv::Scalar(0,255,0), 2, cv::LINE_4);
-		}	
+		}
+		
+		// draw current position and destination
+		cv::circle(m_gra, nodes[0], 5, cv::Scalar(0,0,255), cv::FILLED);
+		cv::putText(m_gra, "current pos", nodes[0], cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0,0,255), 1);
+		cv::circle(m_gra, nodes[1], 5, cv::Scalar(0,0,255), cv::FILLED);
+		cv::putText(m_gra, "destination", nodes[1], cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0,0,255), 1);
 		
 		cv::imwrite("m_gra.jpg", m_gra);
 		map_graph = m_gra;

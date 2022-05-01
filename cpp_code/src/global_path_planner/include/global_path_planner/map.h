@@ -12,9 +12,12 @@
 #ifndef MAP_H // include header file only once
 #define MAP_H
 
-#define MAP_SIZE	100
-#define VERBOSE_MAP false
+#define MAP_SIZE	100 // map size in pixels
+#define PIXEL_THRESHOLD 60 // pixel oppucancy certainty: [0,100]
+#define VERBOSE_RAW_DATA false
+#define VERBOSE_PREPROCESS false
 #define SAVE_MAP true
+
 
 // class containing map
 class Map
@@ -29,14 +32,14 @@ class Map
 		std::vector<int> getNodePolygon(void);
 		void saveRawData(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 		
-		void preprocessData(cv::Point current_position, cv::Point destination);
+		bool preprocessData(cv::Point current_position, cv::Point destination);
 		
 		void draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path);
 
 							 
 	private:
 		/*** VARIABLES ***/
-		cv::Mat map_raw = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8S, -2);
+		cv::Mat map_raw = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8SC1, -2);
 		cv::Mat map_preprocessed;
 		cv::Mat map_graph;
 		

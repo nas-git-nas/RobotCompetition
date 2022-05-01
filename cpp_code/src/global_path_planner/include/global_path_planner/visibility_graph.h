@@ -8,7 +8,7 @@
 #ifndef VISIBILITY_GRAPH_H // include header file only once
 #define VISIBILITY_GRAPH_H
 
-#define VERBOSE_VISIBILITY 	true
+#define VERBOSE_VISIBILITY 	false
 
 class VisibilityGraph
 {

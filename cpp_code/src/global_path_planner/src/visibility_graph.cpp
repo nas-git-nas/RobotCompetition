@@ -81,15 +81,15 @@ void VisibilityGraph::calcGraph(std::vector<cv::Point> nodes, std::vector<int> n
 
 	
 	
-	
-	std::cout << "Graph: " << std::endl;
-	for(int i=0; i<graph.size(); i++) {
-		for(int j=0; j<graph[i].size(); j++) {
-			std::cout << graph[i][j] << " ";
+	if(VERBOSE_VISIBILITY) {
+		std::cout << "Graph: " << std::endl;
+		for(int i=0; i<graph.size(); i++) {
+			for(int j=0; j<graph[i].size(); j++) {
+				std::cout << graph[i][j] << " ";
+			}
+			std::cout << std::endl;
 		}
-		std::cout << std::endl;
 	}
-	
 	return;
 }
 

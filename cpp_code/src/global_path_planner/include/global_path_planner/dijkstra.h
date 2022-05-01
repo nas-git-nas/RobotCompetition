@@ -7,7 +7,7 @@
 
 
 #define DISTANCE_MAX 10000 //very large number, should be larger than the largest distance
-#define VERBOSE_DIJKSTRA true
+#define VERBOSE_DIJKSTRA false
 
 class Dijkstra
 {
@@ -15,7 +15,7 @@ class Dijkstra
 		/*** FUNCTIONS ***/
 		std::vector<int> getShortestPath(void);
 		
-		void calcPath(std::vector<std::vector<int>> graph);
+		bool calcPath(std::vector<std::vector<int>> graph);
 	
 	private:
 		/*** VARIABLES ***/
