@@ -47,6 +47,7 @@ class LocalPathPlanner
         std::vector<PointTemp> set_points;
         std::array<float,4> motor_vel = {0,0,0,0}; // {right front, right back, left front, left back}
         time_t time_update_pose;
+        bool destination_reached = true;
 
         void updateMotorVelocity(void);
         void updatePose(void);
@@ -81,6 +82,7 @@ void LocalPathPlanner::setPoseAndSetPoints(std::vector<PointTemp> nodes, std::ve
     for(int i=1; i<shortest_path.size(); i++) { 
         set_points.push_back(nodes[shortest_path[i]]);
     }
+    destination_reached = false;
 
     // update time
     time_update_pose = clock();
@@ -109,7 +111,7 @@ void LocalPathPlanner::updateMotorVelocity(void)
     static float theta_error_integration = 0;
     static clock_t time_update_error = clock();
     
-    // update pose and get time 
+    // update pose and get time
     updatePose();
 
     // calc. relative distance from current psition to first set point
@@ -117,7 +119,6 @@ void LocalPathPlanner::updateMotorVelocity(void)
     float error_y = set_points[0].y - pose[1];
 
     // verify distance to next set-point and update set-point list if necessary
-    bool destination_reached = false;
     float distance = sqrtf(error_x*error_x + error_y*error_y);
     while(distance < SET_POINT_DISTANCE_THRESHOLD) {
         // reset error integration
@@ -134,6 +135,7 @@ void LocalPathPlanner::updateMotorVelocity(void)
         for(int i=0; i<set_points.size()-1; i++) {
             set_points[i] = set_points[i+1];
         }
+        set_points.pop_back();
         error_x = set_points[0].x - pose[0];
         error_y = set_points[0].y - pose[1];
         distance = sqrtf(error_x*error_x + error_y*error_y);
@@ -237,16 +239,12 @@ float LocalPathPlanner::limitVelocity(float vel, float max, float min)
 {
     if(vel>max) {
         vel = max;
-        std::cout << "limit vel max: " << max << std::endl;
     } else if(vel<-max) {
         vel = -max;
-        std::cout << "limit vel max: " << -max << std::endl;
     } else if(vel<min && vel>0) {
         vel = min;
-        std::cout << "limit vel min: " << min << std::endl;
     } else if(vel>-min && vel<0) {
         vel = -min;
-        std::cout << "limit vel min: " << -min << std::endl;
     }
     return vel;  
 }
@@ -266,18 +264,18 @@ int main(int argc, char **argv)
 {
     LocalPathPlanner local_path_planner;
 
-    struct PointTemp p1;
-    struct PointTemp p2;
-    struct PointTemp p3;
+    struct PointTemp p1, p2, p3 ,p4;
     p1.x = 0;
     p1.y = 0;
     p2.x = 0.5;
     p2.y = 0;
     p3.x = 0.5;
     p3.y = 1;
+    p4.x = -1;
+    p4.y = 0;
 
-    std::vector<PointTemp> nodes = {p1,p2,p3};
-    std::vector<int> shortest_path = {0,1,2};
+    std::vector<PointTemp> nodes = {p1,p2,p3,p4};
+    std::vector<int> shortest_path = {0,1,2,3};
     float new_angle = 0; //1.57;
 
     std::array<float,4> motor_vel;
@@ -287,29 +285,36 @@ int main(int argc, char **argv)
     std::ofstream log;
     log.open("log.txt");
 
+    log << "--set point size\n";
+    log << SET_POINT_DISTANCE_THRESHOLD << "\n";
+
     log << "--set points\n";
     for(int i=0; i<nodes.size(); i++) {
-        log << nodes[shortest_path[i]].x << "," << nodes[shortest_path[i]].y << "\n";
+        log << roundFloat(nodes[shortest_path[i]].x) << "," << roundFloat(nodes[shortest_path[i]].y) << "\n";
     }
+    std::cout << "node: (" << nodes[3].x << "," << nodes[3].y << ")" << std::endl;
+
 
     local_path_planner.setPoseAndSetPoints(nodes, shortest_path, new_angle);
-
-    std::cout << "start program" << std::endl; 
     
-    log << "--pose\n";
-    for(int i=0; i<20; i++) {
-        std::cout << "        i=" << i << std::endl;
+    log << "--poses\n";
+    for(int i=0; i<70; i++) {
+        if(VERBOSE_LOCAL_PATH_PLANNER) {
+            std::cout << "        i=" << i << std::endl;
+        }
 
         motor_vel = local_path_planner.getMotorVelocity();
         pose = local_path_planner.getPose();
         set_points = local_path_planner.getSetPoints();
 
-        std::cout << "pose: (" << pose[0] << "," << pose[1] << "," << rad2degrees(pose[2]) << ") vel: (" 
-                  << motor_vel[0] << "," << motor_vel[1] << "," << motor_vel[2] << "," << motor_vel[3] << ") set-point: (" 
-                  << set_points[0].x << "," << set_points[0].y << ")" << std::endl;
+        if(VERBOSE_LOCAL_PATH_PLANNER) {
+            std::cout << "pose: (" << pose[0] << "," << pose[1] << "," << rad2degrees(pose[2]) << ") vel: (" 
+                        << motor_vel[0] << "," << motor_vel[1] << "," << motor_vel[2] << "," << motor_vel[3] << ") set-point: (" 
+                        << set_points[0].x << "," << set_points[0].y << ")" << std::endl;
+        }
 
         log << roundFloat(pose[0]) << "," << roundFloat(pose[1]) << "," << roundFloat(pose[2]) << "\n";
-        
+        std::cout << "i=" << i << std::endl;
         clock_t time_start = clock();
         float delta_time = 0;
         while(delta_time<0.5) {
