@@ -12,7 +12,7 @@
 #ifndef MAP_H // include header file only once
 #define MAP_H
 
-#define MAP_SIZE	100 // map size in pixels
+#define MAP_SIZE	500 // map size in pixels
 #define PIXEL_THRESHOLD 60 // pixel oppucancy certainty: [0,100]
 #define VERBOSE_RAW_DATA false
 #define VERBOSE_PREPROCESS false
@@ -34,7 +34,9 @@ class Map
 		
 		bool preprocessData(cv::Point current_position, cv::Point destination);
 		
-		void draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path);
+		void draw_graph(std::vector<std::vector<int>> graph, 
+								std::vector<int> shortest_path);
+		void printMap(void);
 
 							 
 	private:

@@ -148,4 +148,10 @@ void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> short
 	return;
 }
 
+void Map::printMap(void)
+{
+	std::cout << "--map start" << std::endl << map_graph << std::endl 
+				 << "--map end" << std::endl;
+}
+
 

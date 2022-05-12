@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-TEXT_FILE = "cpp_code\src\global_path_planner\src\log.txt"
+TEXT_FILE = "log.txt"
 VERBOSE_LOCAL_PATH_PLANNER = True
 
 def readLine(line, array_size):

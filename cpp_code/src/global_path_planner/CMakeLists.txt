@@ -235,7 +235,7 @@ target_link_libraries(add_two_ints_client ${catkin_LIBRARIES})
 add_dependencies(add_two_ints_client global_path_planner_gencpp)
 
 add_executable(global_path_planner src/global_path_planner.cpp src/map.cpp 
-					src/visibility_graph.cpp src/dijkstra.cpp)
+					src/visibility_graph.cpp src/dijkstra.cpp src/local_path_planner.cpp)
 target_link_libraries(global_path_planner ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(global_path_planner global_path_planner_gencpp)
 
