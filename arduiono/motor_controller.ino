@@ -1,6 +1,11 @@
 /*
 * --- MOTOR CONTROLLER
 */
+#include <ros.h>
+#include <std_msgs/Empty.h>
+#include <std_msgs/Float32MultiArray.h>
+#include <std_msgs/Float32.h>
+
 #define M0S 2
 #define M0E A2
 #define M0D A3
@@ -23,6 +28,12 @@
 #define MOTOR_PWM_MIN 26.0 // corresponding to 10% of 255
 #define MOTOR_PWM_VEL_DELTA float((MOTOR_PWM_MAX-MOTOR_PWM_MIN)/(MOTOR_VEL_MAX-MOTOR_VEL_MIN))
 #define MOTOR_PWM_ZERO_VEL float(MOTOR_PWM_MIN - (MOTOR_PWM_VEL_DELTA*MOTOR_VEL_MIN))
+
+ros::NodeHandle  nh;
+
+float vel[4] = {0,0,0,0};  // angular velocitiy in rad/s
+bool data_updated = false;
+
 
 void setupMotors(void)
 {
@@ -128,17 +139,47 @@ uint8_t motorCalcPWM(float motor_vel)
   return 0;
 }
 
+void raspberryCB( const std_msgs::Float32MultiArray& rasp2ard_msg){
+  digitalWrite(LED_BUILTIN, HIGH-digitalRead(LED_BUILTIN));   // blink the led
+
+  for(int i=0; i<4; i++) {
+    vel[i] = rasp2ard_msg.data[i];
+  }
+  data_updated = true;
+}
+
+std_msgs::Float32MultiArray ard2rasp_msg;
+ros::Publisher pub("ard2rasp", &ard2rasp_msg);
+ros::Subscriber<std_msgs::Float32MultiArray> sub("motor_vel", &raspberryCB);
+
+
 
 void setup()
 {
   setupMotors(); // init. motors
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  nh.initNode();
+  nh.advertise(pub);
+  nh.subscribe(sub);
+
+  ard2rasp_msg.data = (float*)malloc(sizeof(float) * 4);
+  ard2rasp_msg.data_length = 4;
 }
 
 void loop()
 {
-  float vel[4] = {0,0,0,0};  // angular velocitiy in rad/s
-
+  while(!data_updated) {
+    nh.spinOnce();
+  }
+  
   for(int i=0; i<4; i++) {
     setMotorCommand(vel[i], i);
   }
+  data_updated = false;
+
+  for(int i=0; i<4; i++) {
+    ard2rasp_msg.data[i] = vel[i];
+  }
+  pub.publish(&ard2rasp_msg);
 }

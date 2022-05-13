@@ -2,6 +2,7 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/Float32MultiArray.h"
+#include "std_msgs/Float32.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "geometry_msgs/PoseStamped.h"
 #include <vector>
@@ -25,6 +26,7 @@
 
 Map map;
 
+std::array<float,4> motor_vel_arduino = {0,0,0,0};
 
 
 
@@ -55,9 +57,18 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 	std::cout << "In side pose callback" << std::endl;
 	std::cout << pose1.position.x << std::endl;
+}
 
-
-	
+void arduinoCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{
+	std::cout << "------------------in arduinoCB" << std::endl;
+	std::cout << "arduino data: (" << msg->data[0] << "," << msg->data[1] 
+				 << "," << msg->data[2] << "," << msg->data[3] << ")" 
+				 << std::endl;
+	for(int i=0; i<4; i++) {
+		motor_vel_arduino[i] = msg->data[i];
+	}
+	std::cout << "out arduinoCB" << std::endl;
 }
 
 float rad2degrees(float angle)
@@ -171,6 +182,7 @@ int main(int argc, char **argv)
 	*/
 	ros::Subscriber sub = n.subscribe("map", 100, mapCallback);
 	ros::Subscriber sub2 = n.subscribe("slam_out_pose", 100, poseCallback);
+	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 10, arduinoCB);
 	
 	
 	ros::Publisher pub_motor_vel = 
@@ -195,7 +207,7 @@ int main(int argc, char **argv)
 	initLPP(lpp);
 	std::array<float,4> motor_vel;
 
-	ros::Duration(5, 0).sleep();
+	ros::Duration(3, 0).sleep();
 	std::cout << argv[0] << std::endl;
 	std::cout<<"--start\n";
 
@@ -207,25 +219,24 @@ int main(int argc, char **argv)
   		counter++;
   		
   		ros::spinOnce();
+  		std::cout << "after spinning" << std::endl;
   		
-  		logLPP(lpp);
+  		std::cout << "recieving: \t(" << motor_vel_arduino[0] << "," 
+  					 << motor_vel_arduino[1] << "," << motor_vel_arduino[2] 
+  					 << "," << motor_vel_arduino[3] << ")" << std::endl;
+  		
   		motor_vel = lpp.getMotorVelocity();
-  		
-  		
-  		std::cout<<"--after spinning: " << "\n";
-  		float values[2];
-  		if(counter%3==0) {
-  			values[0] = 0;
-  			values[1] = 1;
-  		} else {
-  			values[0] = 1;
-  			values[1] = 0;
-  		}  			
+  		logLPP(lpp);
+  		std::cout << "vel: \t(" << motor_vel[0]<<"," << motor_vel[1]<<"," 
+  					 << motor_vel[2]<<"," << motor_vel[3]<<")" << std::endl;
+  		 			
   		std_msgs::Float32MultiArray msg_rasp2ard;
-  		//msg_rasp2ard.data_length = 2;
-  		msg_rasp2ard.data.push_back(values[0]);
-		msg_rasp2ard.data.push_back(values[1]);
-  		//std_msgs::Empty myMsg;
+  		for(int i=0; i<4; i++) {
+  			msg_rasp2ard.data.push_back(motor_vel[i]);
+  		}
+  		std::cout << "sending: \t(" << msg_rasp2ard.data[0] << "," 
+  					 << msg_rasp2ard.data[1] << "," << msg_rasp2ard.data[2] 
+  					 << "," << msg_rasp2ard.data[3] << ")" << std::endl;
   		pub_motor_vel.publish(msg_rasp2ard); 	
   
   		/*while(!map.new_data) {

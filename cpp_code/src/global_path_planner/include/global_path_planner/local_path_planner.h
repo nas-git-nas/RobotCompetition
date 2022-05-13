@@ -16,7 +16,7 @@
 #ifndef LOCAL_PATH_PLANNER_H // include header file only once
 #define LOCAL_PATH_PLANNER_H
 
-#define VERBOSE_LOCAL_PATH_PLANNER true
+#define VERBOSE_LOCAL_PATH_PLANNER false
 
 #define WHEEL_RADIUS 0.10 // in m
 #define INTER_WHEEL_DISTANCE 0.2 // in m
