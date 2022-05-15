@@ -14,11 +14,20 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
   ros::ServiceClient client = n.serviceClient<global_path_planner::AddTwoInts>("add_two_ints");
   global_path_planner::AddTwoInts srv;
-  srv.request.a = atoll(argv[1]);
-  srv.request.b = atoll(argv[2]);
+  
+  std::vector<uint16_t> set_points;
+  set_points.push_back(1);
+  set_points.push_back(2);
+  set_points.push_back(3);
+  
+  srv.request.set_points_x = set_points;
+  srv.request.nb_set_points = set_points.size();
+  
   if (client.call(srv))
   {
-    ROS_INFO("Sum: %ld", (long int)srv.response.sum);
+    std::cout << "motor_vel: (" << srv.response.motor_vel[0] << "," 
+    			  << srv.response.motor_vel[1] << "," << srv.response.motor_vel[2] 
+    			  << "," << srv.response.motor_vel[3] << ")" << std::endl;
   }
   else
   {

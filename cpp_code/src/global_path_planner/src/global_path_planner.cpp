@@ -1,4 +1,5 @@
 #include "ros/ros.h"
+#include "global_path_planner/LocalPathPlanner.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/Float32MultiArray.h"
@@ -17,7 +18,7 @@
 #include "map.h"
 #include "visibility_graph.h"
 #include "dijkstra.h"
-#include "local_path_planner.h"
+//#include "local_path_planner.h"
 
 
 #define VERBOSE 	false
@@ -61,86 +62,51 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 void arduinoCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
 {
-	std::cout << "------------------in arduinoCB" << std::endl;
-	std::cout << "arduino data: (" << msg->data[0] << "," << msg->data[1] 
-				 << "," << msg->data[2] << "," << msg->data[3] << ")" 
-				 << std::endl;
+	ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," << msg->data[1] 
+				 		  << "," << msg->data[2] << "," << msg->data[3] << ")" 
+				 		  << std::endl);
 	for(int i=0; i<4; i++) {
 		motor_vel_arduino[i] = msg->data[i];
 	}
-	std::cout << "out arduinoCB" << std::endl;
 }
 
-float rad2degrees(float angle)
-{
-    return (angle*180.0)/PI;
-}
 
-float roundFloat(float number)
-{
-    return floor(number * 10000.0) / 10000.0;
-} 
 
-void initLPP(LocalPathPlanner &lpp)
-{
-	cv::Point p1, p2, p3 ,p4;
-	p1.x = 0;
-	p1.y = 0;
-	p2.x = 50;
-	p2.y = 0;
-	p3.x = 50;
-	p3.y = 100;
-	p4.x = -100;
-	p4.y = 0;
-
-	std::vector<cv::Point> nodes = {p1,p2,p3,p4};
-	std::vector<int> shortest_path = {0,1,2,3};
-	float new_angle = 0;
+void initLPPService(ros::ServiceClient &lpp_client, 
+							global_path_planner::LocalPathPlanner &lpp_srv)
 	
-	lpp.setPoseAndSetPoints(nodes, shortest_path, new_angle);
-	
-	// create logging instance
-	std::ofstream log;
-	log.open("log.txt");
-
-	// log set point distance threshold
-	log << "--set point size\n";
-	log << SET_POINT_DISTANCE_THRESHOLD << "\n";
-
-	// log set points
-	log << "--set points\n";
-	for(int i=0; i<nodes.size(); i++) {
-	  log << nodes[shortest_path[i]].x << "," 
-	  	   << roundFloat(nodes[shortest_path[i]].y) << "\n";
-	}
-	std::cout << "node: (" << nodes[3].x << "," << nodes[3].y << ")" << std::endl;
-
-	// start logging poses
-	log << "--poses\n";
-	log.close();
-}
-
-void logLPP(LocalPathPlanner &lpp)
 {
-	// create logging instance
-	std::ofstream log;
-	log.open("log.txt", std::ios_base::app);
+	std::vector<uint16_t> nodes_x;
+	std::vector<uint16_t> nodes_y;
+	std::vector<uint16_t> shortest_path;
+	nodes_x.push_back(0);
+	nodes_x.push_back(100);
+	nodes_x.push_back(0);
+	nodes_y.push_back(0);
+	nodes_y.push_back(0);
+	nodes_y.push_back(100);
+	shortest_path.push_back(0);
+	shortest_path.push_back(1);
+	shortest_path.push_back(2);	
+	float angle = 0;
 
+	lpp_srv.request.nodes_x = nodes_x;
+	lpp_srv.request.nodes_y = nodes_y;
+	lpp_srv.request.nb_nodes = nodes_x.size();
+	lpp_srv.request.path = shortest_path;
+	lpp_srv.request.nb_nodes_in_path = shortest_path.size();
+	lpp_srv.request.angle = angle;
 
-	std::array<float,3> pose = lpp.getPose();
-	std::vector<cv::Point> set_points = lpp.getSetPoints();
-	log << roundFloat(pose[0]) << "," << roundFloat(pose[1]) << "," 
-										<< roundFloat(pose[2]) << "\n";
-
-	if(VERBOSE_LOCAL_PATH_PLANNER) {
-		std::cout << "pose: (" << pose[0] << "," << pose[1] << "," 
-					 << rad2degrees(pose[2]) << ") set-point: (" 
-				      << set_points[0].x << "," << set_points[0].y 
-				      << ")" << std::endl;
+	if(lpp_client.call(lpp_srv))
+	{
+	 std::cout << "lpp_client initialiyed" << std::endl;
 	}
-		
-	log.close();
+	else
+	{
+	 ROS_ERROR("Failed to call service lpp_service");
+	}	
 }
+
 
 
 int main(int argc, char **argv)
@@ -187,6 +153,11 @@ int main(int argc, char **argv)
 	
 	ros::Publisher pub_motor_vel = 
 				n.advertise<std_msgs::Float32MultiArray>("motor_vel", 10);
+				
+				
+	ros::ServiceClient lpp_client = 
+				n.serviceClient<global_path_planner::LocalPathPlanner>("lpp_service");
+  global_path_planner::LocalPathPlanner lpp_srv;
 	
 
 	
@@ -201,50 +172,23 @@ int main(int argc, char **argv)
 
 	VisibilityGraph visibility_graph;
 	Dijkstra dijkstra;
-	LocalPathPlanner lpp;
 
 
-	initLPP(lpp);
+	initLPPService(lpp_client, lpp_srv);
 	std::array<float,4> motor_vel;
 
 	ros::Duration(3, 0).sleep();
 	std::cout << argv[0] << std::endl;
-	std::cout<<"--start\n";
+	ROS_INFO_STREAM("--GPP::start\n");
 
 	int counter = 0;
 	while(ros::ok()) {
 	
-  		ros::Duration(0.1).sleep();
-  		std::cout<<"--cycle: " << counter << "\n";
+  		ros::Duration(1).sleep();
+  		ROS_INFO_STREAM("--GPP: " << counter << "\n");
   		counter++;
   		
   		ros::spinOnce();
-  		std::cout << "after spinning" << std::endl;
-  		
-  		std::cout << "recieving: \t(" << motor_vel_arduino[0] << "," 
-  					 << motor_vel_arduino[1] << "," << motor_vel_arduino[2] 
-  					 << "," << motor_vel_arduino[3] << ")" << std::endl;
-  		
-  		motor_vel = lpp.getMotorVelocity();
-  		logLPP(lpp);
-  		std::cout << "vel: \t(" << motor_vel[0]<<"," << motor_vel[1]<<"," 
-  					 << motor_vel[2]<<"," << motor_vel[3]<<")" << std::endl;
-  		 			
-  		std_msgs::Float32MultiArray msg_rasp2ard;
-  		for(int i=0; i<4; i++) {
-  			msg_rasp2ard.data.push_back(motor_vel[i]);
-  		}
-  		std::cout << "sending: \t(" << msg_rasp2ard.data[0] << "," 
-  					 << msg_rasp2ard.data[1] << "," << msg_rasp2ard.data[2] 
-  					 << "," << msg_rasp2ard.data[3] << ")" << std::endl;
-  		pub_motor_vel.publish(msg_rasp2ard); 	
-  
-  		/*while(!map.new_data) {
-  			ros::spinOnce();
-  		}
-  		map.new_data = false;
-  		
-
   		
   		
   		cv::Point current_position(50.0,50.0); // current robot position

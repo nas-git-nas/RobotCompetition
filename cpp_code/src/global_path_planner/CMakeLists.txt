@@ -58,6 +58,7 @@ add_message_files(
 add_service_files(
 	FILES
    AddTwoInts.srv
+   LocalPathPlanner.srv
    GppGetMap.srv
 )
 
@@ -230,12 +231,17 @@ add_executable(add_two_ints_server src/add_two_ints_server.cpp)
 target_link_libraries(add_two_ints_server ${catkin_LIBRARIES})
 add_dependencies(add_two_ints_server global_path_planner_gencpp)
 
+add_executable(lpp_server src/lpp_server.cpp src/local_path_planner.cpp)
+target_link_libraries(lpp_server ${catkin_LIBRARIES})
+add_dependencies(lpp_server global_path_planner_gencpp)
+
 add_executable(add_two_ints_client src/add_two_ints_client.cpp)
 target_link_libraries(add_two_ints_client ${catkin_LIBRARIES})
 add_dependencies(add_two_ints_client global_path_planner_gencpp)
 
 add_executable(global_path_planner src/global_path_planner.cpp src/map.cpp 
-					src/visibility_graph.cpp src/dijkstra.cpp src/local_path_planner.cpp)
+					src/visibility_graph.cpp src/dijkstra.cpp 
+					src/local_path_planner.cpp)
 target_link_libraries(global_path_planner ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(global_path_planner global_path_planner_gencpp)
 

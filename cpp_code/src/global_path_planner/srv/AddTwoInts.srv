@@ -1,4 +1,4 @@
-int64 a
-int64 b
+uint16 nb_set_points
+uint16[] set_points_x
 ---
-int64 sum
+float32[4] motor_vel

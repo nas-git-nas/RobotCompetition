@@ -4,10 +4,18 @@
 bool add(global_path_planner::AddTwoInts::Request  &req,
          global_path_planner::AddTwoInts::Response &res)
 {
-  res.sum = req.a + req.b;
-  ROS_INFO("request: x=%ld, y=%ld", (long int)req.a, (long int)req.b);
-  ROS_INFO("sending back response: [%ld]", (long int)res.sum);
-  return true;
+	//res.sum = req.a + req.b;
+	int sum = 0;
+	for(int i=0; i<req.nb_set_points; i++) {
+		sum += req.set_points_x[i];
+	}
+
+	res.motor_vel[0] = float(sum);
+	res.motor_vel[1] = 0.5;
+	res.motor_vel[2] = -0.5;
+	res.motor_vel[3] = -0.5;
+
+	return true;
 }
 
 int main(int argc, char **argv)

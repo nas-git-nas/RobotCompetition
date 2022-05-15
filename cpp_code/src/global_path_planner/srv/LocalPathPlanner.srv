@@ -1,0 +1,8 @@
+uint16 nb_nodes
+uint16[] nodes_x
+uint16[] nodes_y
+uint16 nb_nodes_in_path
+uint16[] path
+float64 angle
+---
+float32[4] motor_vel
