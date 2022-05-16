@@ -22,7 +22,7 @@ float roundFloat(float number)
     return floor(number * 10000.0) / 10000.0;
 } 
 
-void initLogLPP(std::vector<cv::Point> nodes, std::vector<int> shortest_path)
+void initLogLPP(std::vector<cv::Point> trajectory)
 {
 	
 	// create logging instance
@@ -35,11 +35,9 @@ void initLogLPP(std::vector<cv::Point> nodes, std::vector<int> shortest_path)
 
 	// log set points
 	log << "--set points\n";
-	for(int i=0; i<nodes.size(); i++) {
-	  log << nodes[shortest_path[i]].x << "," 
-	  	   << roundFloat(nodes[shortest_path[i]].y) << "\n";
+	for(int i=0; i<trajectory.size(); i++) {
+	  log << trajectory[i].x << "," << trajectory[i].y << "\n";
 	}
-	std::cout << "node: (" << nodes[3].x << "," << nodes[3].y << ")" << std::endl;
 
 	// start logging poses
 	log << "--poses\n";
@@ -69,29 +67,24 @@ void logLPP(LocalPathPlanner &lpp)
 bool setLPPCallback(global_path_planner::LocalPathPlanner::Request  &req,
          			  global_path_planner::LocalPathPlanner::Response &res)
 {
-	std::vector<cv::Point> nodes;
+	std::vector<cv::Point> trajectory;
 	for(int i=0; i<req.nb_nodes; i++) {
 		cv::Point point_temp;
-		point_temp.x = req.nodes_x[i];
-		point_temp.y = req.nodes_y[i];
-		nodes.push_back(point_temp);
-	}
-
-	std::vector<int> shortest_path;
-	for(int i=0; i<req.nb_nodes_in_path; i++) {
-		shortest_path.push_back(req.path[i]);
+		point_temp.x = req.trajectory_x[i];
+		point_temp.y = req.trajectory_y[i];
+		trajectory.push_back(point_temp);
 	}
 	
-	float new_angle = req.angle;
+	float new_heading = req.heading;
 
-	lpp.setPoseAndSetPoints(nodes, shortest_path, new_angle);
+	lpp.setPoseAndSetPoints(trajectory, new_heading);
 
 	res.motor_vel[0] = 0.5;
 	res.motor_vel[1] = 0.5;
 	res.motor_vel[2] = -0.5;
 	res.motor_vel[3] = -0.5;
 	
-	initLogLPP(nodes, shortest_path);
+	initLogLPP(trajectory);
 	lpp_initialized = true;
 	return true;
 }

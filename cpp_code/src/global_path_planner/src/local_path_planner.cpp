@@ -5,16 +5,18 @@
  
 
 
-void LocalPathPlanner::setPoseAndSetPoints(std::vector<cv::Point> nodes, std::vector<int> shortest_path, float new_angle)
+void LocalPathPlanner::setPoseAndSetPoints(
+				std::vector<cv::Point> trajectory, float new_heading)
 {
-    pose[0] = nodes[shortest_path[0]].x;
-    pose[1] = nodes[shortest_path[0]].y;
-    pose[2] = limitAngle(new_angle);
+    pose[0] = trajectory[0].x;
+    pose[1] = trajectory[0].y;
+    pose[2] = limitAngle(new_heading);
 
-    //skip first point of shortest_path because it's the current robot position
+    //skip first point of shortest_path because it's the current 
+    // robot position
     set_points.clear();
-    for(int i=1; i<shortest_path.size(); i++) { 
-        set_points.push_back(nodes[shortest_path[i]]);
+    for(int i=1; i<trajectory.size(); i++) { 
+        set_points.push_back(trajectory[i]);
     }
     destination_reached = false;
 

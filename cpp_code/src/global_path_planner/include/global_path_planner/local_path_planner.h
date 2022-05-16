@@ -40,7 +40,8 @@ class LocalPathPlanner
 {
    public:
 		/*** FUNCTIONS ***/
-		void setPoseAndSetPoints(std::vector<cv::Point> nodes, std::vector<int> shortest_path, float new_angle);
+		void setPoseAndSetPoints(std::vector<cv::Point> trajectory, 
+										 float new_heading);
 		std::array<float,4> getMotorVelocity(void);
 		std::array<float,3> getPose(void);
 		std::vector<cv::Point> getSetPoints(void);
