@@ -93,7 +93,8 @@ void LocalPathPlanner::updateMotorVelocity(void)
         theta_error_integration != delta_time_error.toSec()*theta_error;
 
         if(VERBOSE_LOCAL_PATH_PLANNER) {
-            std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error << "), atan=" << atan2f(error_y, error_x) 
+            std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error 
+            			 << "), atan=" << atan2f(error_y, error_x) 
                       <<  ", theta_error_integration: " << theta_error_integration << std::endl;
         } 
 
@@ -123,7 +124,8 @@ void LocalPathPlanner::updatePose()
     // update pose
     float delta_pos = delta_time.toSec() * WHEEL_RADIUS * M2GRID 
     	* (motor_vel[0]+motor_vel[1]+motor_vel[2]+motor_vel[3])/4; // in grid
-    float delta_theta = delta_time.toSec()*(motor_vel[0]+motor_vel[1]-motor_vel[2]-motor_vel[3])/(2*INTER_WHEEL_DISTANCE); // in rad
+    float delta_theta = delta_time.toSec()*(motor_vel[0]+motor_vel[1]-motor_vel[2]-motor_vel[3])
+    							*WHEEL_RADIUS/(2*INTER_WHEEL_DISTANCE*VEL_TURN_ADJUSTMENT); // in rad
     pose[0] += cos(pose[2] + delta_theta/2)*delta_pos;
     pose[1] += sin(pose[2] + delta_theta/2)*delta_pos;
     pose[2] += delta_theta;

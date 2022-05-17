@@ -69,9 +69,9 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 void arduinoCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
 {
-	ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," 
+	/*ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," 
 						<< msg->data[1] << "," << msg->data[2] << "," 
-						<< msg->data[3] << ")" << std::endl);
+						<< msg->data[3] << ")" << std::endl);*/
 }
 
 
@@ -83,11 +83,11 @@ void initLPPService(ros::ServiceClient &lpp_client,
 	std::vector<uint16_t> trajectory_x;
 	std::vector<uint16_t> trajectory_y;
 	trajectory_x.push_back(0);
-	trajectory_x.push_back(100);
+	trajectory_x.push_back(50);
 	trajectory_x.push_back(0);
 	trajectory_y.push_back(0);
 	trajectory_y.push_back(0);
-	trajectory_y.push_back(100);
+	trajectory_y.push_back(0);
 	float angle = 0;
 
 	lpp_srv.request.trajectory_x = trajectory_x;
@@ -97,7 +97,7 @@ void initLPPService(ros::ServiceClient &lpp_client,
 
 	if(lpp_client.call(lpp_srv))
 	{
-	 std::cout << "lpp_client initialiyed" << std::endl;
+	 std::cout << "lpp_client initialized" << std::endl;
 	}
 	else
 	{
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
 
 
 
-	//initLPPService(lpp_client, lpp_srv);
+	initLPPService(lpp_client, lpp_srv);
 
 	ros::Duration(3, 0).sleep();
 	//std::cout << argv[0] << std::endl;

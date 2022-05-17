@@ -16,16 +16,17 @@
 #ifndef LOCAL_PATH_PLANNER_H // include header file only once
 #define LOCAL_PATH_PLANNER_H
 
-#define VERBOSE_LOCAL_PATH_PLANNER false
+#define VERBOSE_LOCAL_PATH_PLANNER true
 
-#define WHEEL_RADIUS 0.10 // in m
-#define INTER_WHEEL_DISTANCE 0.2 // in m
+#define WHEEL_RADIUS 0.0505 // in m
+#define INTER_WHEEL_DISTANCE 0.306 // in m
 #define SET_POINT_DISTANCE_THRESHOLD 5 // in cm
-#define TURNING_UPPER_THRESHOLD 0.7854 // in rad, 45°
-#define TURNING_LOWER_THRESHOLD 0.7854 // in rad, 45°
+#define TURNING_UPPER_THRESHOLD 0.3491 // in rad, 20°
+#define TURNING_LOWER_THRESHOLD 0.2618 // in rad, 15°
 
-#define VEL_TURN_MAX 3.0// in rad/s
-#define VEL_TURN_MIN 1.0 // in rad/s
+#define VEL_TURN_MAX 3.5// in rad/s
+#define VEL_TURN_MIN 2.5 // in rad/s
+#define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
 #define VEL_TURN_PID_KP 1.0
 
 #define VEL_MOVE_MAX 3.0 // in rad/s
