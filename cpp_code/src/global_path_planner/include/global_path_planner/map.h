@@ -32,7 +32,10 @@ class Map
 		std::vector<int> getNodePolygon(void);
 		void saveRawData(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 		
-		bool preprocessData(cv::Point current_position, cv::Point destination);
+		bool preprocessData(void);
+		
+		void calcPolygons(cv::Point current_position, 
+								 cv::Point destination);
 		
 		void draw_graph(std::vector<std::vector<int>> graph, 
 								std::vector<int> shortest_path);
@@ -42,6 +45,7 @@ class Map
 	private:
 		/*** VARIABLES ***/
 		cv::Mat map_raw = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8SC1, -2);
+		cv::Mat map_dilated_robot;
 		cv::Mat map_preprocessed;
 		cv::Mat map_graph;
 		

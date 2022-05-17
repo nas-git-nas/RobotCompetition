@@ -25,8 +25,8 @@
 
 #define MAP_SIZE_M 5
 #define MAP_RESOLUTION 0.01
-#define MAP_START_X 0.0
-#define MAP_START_Y 0.0
+#define MAP_START_X 0.5
+#define MAP_START_Y 0.5
 #define MAP_OFFSET_X int(MAP_SIZE_M*MAP_START_X/MAP_RESOLUTION)
 #define MAP_OFFSET_Y int(MAP_SIZE_M*MAP_START_Y/MAP_RESOLUTION)
 #define MAP_M2PIXEL float(1/MAP_RESOLUTION)
@@ -37,8 +37,7 @@ Map map;
 
 
 struct {
-	int x = 0;
-	int y = 0;
+	cv::Point position;
 	float heading = 0;
 } pose;
 
@@ -52,8 +51,8 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 	//geometry_msgs::Pose pose1 = msg->pose;
 	
 	// convert position in meters to pixels
-	pose.x = int(msg->pose.position.x*MAP_M2PIXEL + MAP_OFFSET_X);
-	pose.y = int(msg->pose.position.y*MAP_M2PIXEL + MAP_OFFSET_Y);
+	pose.position.x = int(msg->pose.position.x*MAP_M2PIXEL + MAP_OFFSET_X);
+	pose.position.y = int(msg->pose.position.y*MAP_M2PIXEL + MAP_OFFSET_Y);
 
 	// convert quaternions to radians
 	tf::Quaternion q(msg->pose.orientation.x, msg->pose.orientation.y,
@@ -63,7 +62,7 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 	m.getRPY(roll, pitch, yaw);	
 	pose.heading = yaw;
 
-	std::cout << "pose: (" << pose.x << "," << pose.y 
+	std::cout << "pose: (" << pose.position.x << "," << pose.position.y 
 				 << "," << pose.heading << ")" << std::endl;
 }
 
@@ -106,10 +105,21 @@ void initLPPService(ros::ServiceClient &lpp_client,
 }
 
 void gpp(ros::ServiceClient &lpp_client, 
-							global_path_planner::LocalPathPlanner &lpp_srv)
+			global_path_planner::LocalPathPlanner &lpp_srv, 
+			cv::Point destination)
 {
+
+	/* --- for testing without LIDAR --- */
+	//pose.position.x = 480;
+	//pose.position.y = 410;
+	/* ---                           --- */
+
+
+
 	VisibilityGraph visibility_graph;
 	Dijkstra dijkstra;
+	
+	map.calcPolygons(pose.position, destination);
 	std::vector<cv::Point> nodes = map.getNodes();
 	
   	visibility_graph.calcGraph(nodes, map.getNodePolygon());		
@@ -127,7 +137,7 @@ void gpp(ros::ServiceClient &lpp_client,
 		trajectory_y.push_back(nodes[path[i]].y);
 	}
 		
-	lpp_srv.request.trajectory_x = trajectory_x;
+	/*lpp_srv.request.trajectory_x = trajectory_x;
 	lpp_srv.request.trajectory_y = trajectory_y;
 	lpp_srv.request.nb_nodes = trajectory_y.size();
 	lpp_srv.request.heading = pose.heading;
@@ -139,11 +149,11 @@ void gpp(ros::ServiceClient &lpp_client,
 	else
 	{
 		ROS_ERROR("Failed to call service lpp_service");
-	}	
+	}*/
 	
-  	/*map.draw_graph(visibility_graph.getGraph(), 
+  	map.draw_graph(visibility_graph.getGraph(), 
   							dijkstra.getShortestPath());
-	map.printMap();*/
+	//map.printMap();
 	
 }
 
@@ -151,41 +161,42 @@ void gpp(ros::ServiceClient &lpp_client,
 
 int main(int argc, char **argv)
 {
+	// init. ROS
 	ros::init(argc, argv, "global_path_planner");
-
-
 	ros::NodeHandle n;
 
-
+	// subscribe to topics
 	ros::Subscriber sub = n.subscribe("map", 100, mapCallback);
 	ros::Subscriber sub2 = n.subscribe("slam_out_pose", 100, poseCallback);
 	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 10, arduinoCB);
 				
-				
+	// create client of service			
 	ros::ServiceClient lpp_client = 
-	  n.serviceClient<global_path_planner::LocalPathPlanner>("lpp_service");
+	 n.serviceClient<global_path_planner::LocalPathPlanner>("lpp_service");
 	global_path_planner::LocalPathPlanner lpp_srv;
 	
 
-
-
-	initLPPService(lpp_client, lpp_srv);
+	//initLPPService(lpp_client, lpp_srv);
 
 	ros::Duration(3, 0).sleep();
-	//std::cout << argv[0] << std::endl;
 	ROS_INFO_STREAM("--GPP::start\n");
 
 	int counter = 0;
 	while(ros::ok()) {
-	
+		
   		ros::Duration(1).sleep();
-  		ros::spinOnce();
-  		
+  		ros::spinOnce(); 		
   		ROS_INFO_STREAM("--GPP: " << counter << "\n");
   		
-  		
-  		
-  		//gpp(lpp_client, lpp_srv);
+  		if(!map.preprocessData()) {
+  			ROS_ERROR("gpp::map::preprocessData");
+  		}		
+  		/* --- DECISION MAKER --- */	
+  		cv::Point destination;
+  		destination.x = pose.position.x + 20;
+  		destination.y = pose.position.y;
+  		/* ---                --- */		
+  		gpp(lpp_client, lpp_srv, destination);
   		
   		counter++;		
 

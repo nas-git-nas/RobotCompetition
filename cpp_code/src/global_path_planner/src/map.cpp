@@ -38,23 +38,21 @@ void Map::saveRawData(const nav_msgs::OccupancyGrid::ConstPtr &msg)
 	}
 }
 
-bool Map::preprocessData(cv::Point current_position, cv::Point destination)
+bool Map::preprocessData(void)
 {
 	cv::Mat m_thr = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8UC1, -2);	
 	cv::Mat m_dil;
-	cv::Mat m_pol;
-	
-	std::vector<std::vector<cv::Point>> contours;	
-	std::vector<cv::Vec4i> hierarchy;
 	
 	if(SAVE_MAP) {
 		cv::imwrite("map.jpg", map_raw);
 	}
 	if(VERBOSE_PREPROCESS) {
-		std::cout << "map_raw =" << std::endl << " " << map_raw << std::endl << std::endl;
+		std::cout << "map_raw =" << std::endl << " " << map_raw 
+		          << std::endl << std::endl;
 	}
 	
-	// transform map_raw to m: from CV_8SC1 (8-bit signed int with 1 channel) to CV_8UC1 (unsigned int)
+	// transform map_raw to m: from CV_8SC1 (8-bit signed int with 
+	// 1 channel) to CV_8UC1 (unsigned int)
 	// and threshold pixels directly
 	for(int i=0; i<MAP_SIZE; i++) {
 		for(int j=0; j<MAP_SIZE; j++) {
@@ -70,26 +68,44 @@ bool Map::preprocessData(cv::Point current_position, cv::Point destination)
 	if(SAVE_MAP) {
 		cv::imwrite("map_threshold.jpg", m_thr);
 	}	
-	//cv::Mat m = cv::imread("maps/map15.pgm", cv::IMREAD_GRAYSCALE);	
-	//cv::threshold(m, m_thr, 160, 255, cv::THRESH_BINARY); // threshold map
 	
 	// expand obstacle by robot size
-	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(11,11));
-	//cv::dilate(m_thr, m_dil, kernel);
+	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, 
+																cv::Size(11,11));
 	cv::erode(m_thr, m_dil, kernel);
+	
+	/* --- for testing without LIDAR --- */
+	//cv::Mat m = cv::imread("maps/map15.pgm", cv::IMREAD_GRAYSCALE);	
+	//cv::threshold(m, m_thr, 160, 255, cv::THRESH_BINARY);
+	//cv::dilate(m_thr, m_dil, kernel);
+	/* ---                           --- */
+	
 	if(SAVE_MAP) {
 		cv::imwrite("map_erode.jpg", m_dil);
 	}
 	
+	map_dilated_robot = m_dil;
+	map_preprocessed = m_thr;
+
+	return true;
+}
+
+void Map::calcPolygons(cv::Point current_position, 
+								 cv::Point destination)
+{
 	// find contours and approximate them to get polygons
-	cv::findContours(m_dil, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+	std::vector<std::vector<cv::Point>> contours;	
+	std::vector<cv::Vec4i> hierarchy;
+	cv::findContours(map_dilated_robot, contours, hierarchy, cv::RETR_LIST,
+						  cv::CHAIN_APPROX_NONE);
+
 	std::vector<std::vector<cv::Point>> polygons(contours.size());		
 	for(int i=0; i<contours.size(); i++) {
 		cv::approxPolyDP(cv::Mat(contours[i]), polygons[i], 10, true);
 	}
 	if(SAVE_MAP) {
-		//m_pol = m_thr;
-		cv::cvtColor(m_thr, m_pol, cv::COLOR_GRAY2BGR);
+		cv::Mat m_pol;
+		cv::cvtColor(map_preprocessed, m_pol, cv::COLOR_GRAY2BGR);
 		cv::drawContours(m_pol, polygons, -1, cv::Scalar(0,0,255), 1);
 		cv::imwrite("m_pol.jpg", m_pol);
 		map_preprocessed = m_pol;
@@ -112,7 +128,7 @@ bool Map::preprocessData(cv::Point current_position, cv::Point destination)
 		}
 	}	
 	
-	return true;
+	return;
 }
 
 void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path)
