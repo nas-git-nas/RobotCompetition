@@ -67,24 +67,29 @@ void logLPP(LocalPathPlanner &lpp)
 bool setLPPCallback(global_path_planner::LocalPathPlanner::Request  &req,
          			  global_path_planner::LocalPathPlanner::Response &res)
 {
-	std::vector<cv::Point> trajectory;
-	for(int i=0; i<req.nb_nodes; i++) {
-		cv::Point point_temp;
-		point_temp.x = req.trajectory_x[i];
-		point_temp.y = req.trajectory_y[i];
-		trajectory.push_back(point_temp);
+	ROS_INFO("inside callback");
+	if(req.stop_motor) {
+		lpp.stopRobot();
+	} else {
+		std::vector<cv::Point> trajectory;
+		for(int i=0; i<req.nb_nodes; i++) {
+			cv::Point point_temp;
+			point_temp.x = req.trajectory_x[i];
+			point_temp.y = req.trajectory_y[i];
+			trajectory.push_back(point_temp);
+		}
+		
+		float new_heading = req.heading;
+
+		lpp.setPoseAndSetPoints(trajectory, new_heading);
+
+		res.motor_vel[0] = 0.5;
+		res.motor_vel[1] = 0.5;
+		res.motor_vel[2] = -0.5;
+		res.motor_vel[3] = -0.5;
+		
+		initLogLPP(trajectory);
 	}
-	
-	float new_heading = req.heading;
-
-	lpp.setPoseAndSetPoints(trajectory, new_heading);
-
-	res.motor_vel[0] = 0.5;
-	res.motor_vel[1] = 0.5;
-	res.motor_vel[2] = -0.5;
-	res.motor_vel[3] = -0.5;
-	
-	initLogLPP(trajectory);
 	lpp_initialized = true;
 	return true;
 }
@@ -108,7 +113,7 @@ int main(int argc, char **argv)
 		ros::Duration(0.1).sleep();
 		ros::spinOnce();
 		
-		ROS_INFO_STREAM("LPP: " << counter << std::endl);
+		//ROS_INFO_STREAM("LPP: " << counter << std::endl);
 		
 		
 		std::array<float,4> motor_vel = lpp.getMotorVelocity();
@@ -117,9 +122,9 @@ int main(int argc, char **argv)
   		for(int i=0; i<4; i++) {
   			msg_rasp2ard.data.push_back(motor_vel[i]);
   		}
-  		ROS_INFO_STREAM("LPP::motor_vel: (" << msg_rasp2ard.data[0] << "," 
+  		/*ROS_INFO_STREAM("LPP::motor_vel: (" << msg_rasp2ard.data[0] << "," 
   					 			<< msg_rasp2ard.data[1] << "," << msg_rasp2ard.data[2] 
-  					 			<< "," << msg_rasp2ard.data[3] << ")" << std::endl);
+  					 			<< "," << msg_rasp2ard.data[3] << ")" << std::endl);*/
   		pub_motor_vel.publish(msg_rasp2ard);
 		
 		

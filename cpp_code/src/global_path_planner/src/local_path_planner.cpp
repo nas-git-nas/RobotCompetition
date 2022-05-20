@@ -19,15 +19,27 @@ void LocalPathPlanner::setPoseAndSetPoints(
         set_points.push_back(trajectory[i]);
     }
     destination_reached = false;
+    stop_robot = false;
 
     // update time
     time_update_pose = ros::Time::now();
 }
 
+void LocalPathPlanner::stopRobot(void)
+{
+	for(int i=0; i<4; i++) {
+		motor_vel[i] = 0;
+	}
+
+    stop_robot = true;
+}
+
 std::array<float,4> LocalPathPlanner::getMotorVelocity(void)
 {
-    updateMotorVelocity();
-    return motor_vel;
+	if(!stop_robot) {
+   	updateMotorVelocity();
+   }
+   return motor_vel;
 }
 
 std::array<float,3> LocalPathPlanner::getPose(void)

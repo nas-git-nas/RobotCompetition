@@ -2,5 +2,6 @@ uint16 nb_nodes
 uint16[] trajectory_x
 uint16[] trajectory_y
 float64 heading
+uint8 stop_motor
 ---
 float32[4] motor_vel

@@ -62,8 +62,8 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 	m.getRPY(roll, pitch, yaw);	
 	pose.heading = yaw;
 
-	std::cout << "pose: (" << pose.position.x << "," << pose.position.y 
-				 << "," << pose.heading << ")" << std::endl;
+	/*std::cout << "pose: (" << pose.position.x << "," << pose.position.y 
+				 << "," << pose.heading << ")" << std::endl;*/
 }
 
 void arduinoCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
@@ -82,17 +82,18 @@ void initLPPService(ros::ServiceClient &lpp_client,
 	std::vector<uint16_t> trajectory_x;
 	std::vector<uint16_t> trajectory_y;
 	trajectory_x.push_back(0);
-	trajectory_x.push_back(50);
 	trajectory_x.push_back(0);
+	//trajectory_x.push_back(0);
 	trajectory_y.push_back(0);
 	trajectory_y.push_back(0);
-	trajectory_y.push_back(0);
+	//trajectory_y.push_back(0);
 	float angle = 0;
 
 	lpp_srv.request.trajectory_x = trajectory_x;
 	lpp_srv.request.trajectory_y = trajectory_y;
 	lpp_srv.request.nb_nodes = trajectory_y.size();
 	lpp_srv.request.heading = angle;
+	lpp_srv.request.stop_motor = 1;
 
 	if(lpp_client.call(lpp_srv))
 	{
@@ -114,7 +115,10 @@ void gpp(ros::ServiceClient &lpp_client,
 	//pose.position.y = 410;
 	/* ---                           --- */
 
-
+	ROS_INFO_STREAM("dm::gpp::position: (" << pose.position.x 
+						 << "," << pose.position.y << ")");
+	ROS_INFO_STREAM("dm::gpp::destination: (" << destination.x 
+						 << "," << destination.y << ")");
 
 	VisibilityGraph visibility_graph;
 	Dijkstra dijkstra;
@@ -125,34 +129,39 @@ void gpp(ros::ServiceClient &lpp_client,
   	visibility_graph.calcGraph(nodes, map.getNodePolygon());		
   	if(!dijkstra.calcPath(visibility_graph.getGraph())) {
   		ROS_ERROR("dm::gpp::dijkstra: failed to find shortest path");
-  	}
+  		initLPPService(lpp_client, lpp_srv);
+  	} else {
 
-  	std::vector<int> path = dijkstra.getShortestPath();
-  	
-	std::vector<uint16_t> trajectory_x;
-	std::vector<uint16_t> trajectory_y;
-	
-	for(int i=0; i<path.size(); i++) {
-		trajectory_x.push_back(nodes[path[i]].x);
-		trajectory_y.push_back(nodes[path[i]].y);
-	}
+	  	std::vector<int> path = dijkstra.getShortestPath();
+	  	
+	  	//std::cout << "dm::gpp: path: " << path << std::endl;
+	  	
+		std::vector<uint16_t> trajectory_x;
+		std::vector<uint16_t> trajectory_y;
 		
-	/*lpp_srv.request.trajectory_x = trajectory_x;
-	lpp_srv.request.trajectory_y = trajectory_y;
-	lpp_srv.request.nb_nodes = trajectory_y.size();
-	lpp_srv.request.heading = pose.heading;
-	
-	if(lpp_client.call(lpp_srv))
-	{
-		ROS_INFO_STREAM("dm::gpp: update lpp_client" << std::endl);
+		for(int i=0; i<path.size(); i++) {
+			trajectory_x.push_back(nodes[path[i]].x);
+			trajectory_y.push_back(nodes[path[i]].y);
+		}
+			
+		lpp_srv.request.trajectory_x = trajectory_x;
+		lpp_srv.request.trajectory_y = trajectory_y;
+		lpp_srv.request.nb_nodes = trajectory_y.size();
+		lpp_srv.request.heading = pose.heading;
+		lpp_srv.request.stop_motor = 0;
+		
+		if(lpp_client.call(lpp_srv))
+		{
+			ROS_INFO_STREAM("dm::gpp: update lpp_client" << std::endl);
+		}
+		else
+		{
+			ROS_ERROR("Failed to call service lpp_service");
+		}
+		
+	  	map.draw_graph(visibility_graph.getGraph(), 
+	  							dijkstra.getShortestPath());
 	}
-	else
-	{
-		ROS_ERROR("Failed to call service lpp_service");
-	}*/
-	
-  	map.draw_graph(visibility_graph.getGraph(), 
-  							dijkstra.getShortestPath());
 	//map.printMap();
 	
 }
@@ -176,10 +185,14 @@ int main(int argc, char **argv)
 	global_path_planner::LocalPathPlanner lpp_srv;
 	
 
-	//initLPPService(lpp_client, lpp_srv);
+	initLPPService(lpp_client, lpp_srv);
+	ROS_INFO_STREAM("--GPP::start1\n");
 
 	ros::Duration(3, 0).sleep();
 	ROS_INFO_STREAM("--GPP::start\n");
+	
+	bool destination_set = false;
+	cv::Point destination;
 
 	int counter = 0;
 	while(ros::ok()) {
@@ -192,11 +205,20 @@ int main(int argc, char **argv)
   			ROS_ERROR("gpp::map::preprocessData");
   		}		
   		/* --- DECISION MAKER --- */	
-  		cv::Point destination;
-  		destination.x = pose.position.x + 20;
-  		destination.y = pose.position.y;
+  		
+  		if(!destination_set) {
+	  		destination.x = pose.position.x + 200;
+	  		destination.y = pose.position.y;
+	  		destination_set = true;
+	  	}
   		/* ---                --- */		
   		gpp(lpp_client, lpp_srv, destination);
+  		
+  		
+  		if(counter>20) {
+  			initLPPService(lpp_client, lpp_srv);
+  			ros::Duration(5, 0).sleep();
+  		}
   		
   		counter++;		
 
