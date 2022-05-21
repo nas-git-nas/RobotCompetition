@@ -71,8 +71,8 @@ Duration Time::operator-(const Time &rhs) const {
   // Note: Considers wrap around as a continuation of time, e.g.,
   // (0,0) - (0xFFFFFFFF, 0) = (1, 0)
   Duration d;
-  //d.sec = sec > rhs.sec ? sec - rhs.sec : -(rhs.sec - sec);
-  //d.nsec = nsec > rhs.nsec ? nsec - rhs.nsec : -(rhs.nsec - nsec);
+  d.sec = sec > rhs.sec ? sec - rhs.sec : -(rhs.sec - sec);
+  d.nsec = nsec > rhs.nsec ? nsec - rhs.nsec : -(rhs.nsec - nsec);
   normalizeSecNSecSigned(d.sec, d.nsec);
   return d;
 }
