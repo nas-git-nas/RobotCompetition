@@ -7,7 +7,7 @@
 
 
 #define DISTANCE_MAX 10000 //very large number, should be larger than the largest distance
-#define VERBOSE_DIJKSTRA false
+
 
 class Dijkstra
 {

@@ -4,15 +4,15 @@
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "local_path_planner.h"
+#include "dm.h"
+#include "lpp.h"
 
 
 
-LocalPathPlanner lpp;
-bool lpp_initialized = false;
+LPP lpp;
 
 
-float rad2degrees(float angle)
+/*float rad2degrees(float angle)
 {
     return (angle*180.0)/PI;
 }
@@ -44,7 +44,7 @@ void initLogLPP(std::vector<cv::Point> trajectory)
 	log.close();
 }
 
-void logLPP(LocalPathPlanner &lpp)
+void logLPP(LPP &lpp)
 {
 	// create logging instance
 	std::ofstream log;
@@ -58,18 +58,16 @@ void logLPP(LocalPathPlanner &lpp)
 	log << roundFloat(pose[0]) << "," << roundFloat(pose[1]) << "," 
 										<< roundFloat(pose[2]) << "\n";
 										
-	/*ROS_INFO_STREAM("pose: " << pose[0] << "," << pose[1] << "," << pose[2] 
-									 << "," << std::endl);*/
 
 	log.close();
-}
+}*/
 
 bool setLPPCallback(global_path_planner::LocalPathPlanner::Request  &req,
          			  global_path_planner::LocalPathPlanner::Response &res)
 {
 	ROS_INFO("inside callback");
 	if(req.stop_motor) {
-		lpp.stopRobot();
+		lpp.stopMotors();
 	} else {
 		std::vector<cv::Point> trajectory;
 		for(int i=0; i<req.nb_nodes; i++) {
@@ -88,9 +86,7 @@ bool setLPPCallback(global_path_planner::LocalPathPlanner::Request  &req,
 		res.motor_vel[2] = -0.5;
 		res.motor_vel[3] = -0.5;
 		
-		initLogLPP(trajectory);
 	}
-	lpp_initialized = true;
 	return true;
 }
 
@@ -113,24 +109,23 @@ int main(int argc, char **argv)
 		ros::Duration(0.1).sleep();
 		ros::spinOnce();
 		
-		//ROS_INFO_STREAM("LPP: " << counter << std::endl);
-		
+		if(LPP_NODE_VERBOSE) {
+			ROS_INFO_STREAM("LPP_node: " << counter << std::endl);
+		}
 		
 		std::array<float,4> motor_vel = lpp.getMotorVelocity();
-		
+
 		std_msgs::Float32MultiArray msg_rasp2ard;
   		for(int i=0; i<4; i++) {
   			msg_rasp2ard.data.push_back(motor_vel[i]);
   		}
-  		/*ROS_INFO_STREAM("LPP::motor_vel: (" << msg_rasp2ard.data[0] << "," 
-  					 			<< msg_rasp2ard.data[1] << "," << msg_rasp2ard.data[2] 
-  					 			<< "," << msg_rasp2ard.data[3] << ")" << std::endl);*/
   		pub_motor_vel.publish(msg_rasp2ard);
-		
-		
-		if(lpp_initialized) {
-			logLPP(lpp);
-		}
+
+  		if(LPP_NODE_VERBOSE) {
+	  		ROS_INFO_STREAM("LPP::motor_vel: (" << msg_rasp2ard.data[0] << "," 
+	  					 			<< msg_rasp2ard.data[1] << "," << msg_rasp2ard.data[2] 
+	  					 			<< "," << msg_rasp2ard.data[3] << ")" << std::endl);
+  		}	
 		
 		counter++;
 	}

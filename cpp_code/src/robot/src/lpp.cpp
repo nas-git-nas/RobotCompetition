@@ -1,11 +1,9 @@
 
-#include "local_path_planner.h"
+#include "dm.h"
+#include "lpp.h"
 
 
- 
-
-
-void LocalPathPlanner::setPoseAndSetPoints(
+void LPP::setPoseAndSetPoints(
 				std::vector<cv::Point> trajectory, float new_heading)
 {
     pose[0] = trajectory[0].x;
@@ -18,23 +16,19 @@ void LocalPathPlanner::setPoseAndSetPoints(
     for(int i=1; i<trajectory.size(); i++) { 
         set_points.push_back(trajectory[i]);
     }
-    destination_reached = false;
     stop_robot = false;
 
     // update time
     time_update_pose = ros::Time::now();
 }
 
-void LocalPathPlanner::stopRobot(void)
+void LPP::stopMotors(void)
 {
-	for(int i=0; i<4; i++) {
-		motor_vel[i] = 0;
-	}
-
-    stop_robot = true;
+	robotStop();
+	stop_robot = true;
 }
 
-std::array<float,4> LocalPathPlanner::getMotorVelocity(void)
+std::array<float,4> LPP::getMotorVelocity(void)
 {
 	if(!stop_robot) {
    	updateMotorVelocity();
@@ -42,18 +36,18 @@ std::array<float,4> LocalPathPlanner::getMotorVelocity(void)
    return motor_vel;
 }
 
-std::array<float,3> LocalPathPlanner::getPose(void)
+std::array<float,3> LPP::getPose(void)
 {
     updatePose();
     return pose;
 }
 
-std::vector<cv::Point> LocalPathPlanner::getSetPoints(void)
+std::vector<cv::Point> LPP::getSetPoints(void)
 {
     return set_points;
 }
 
-void LocalPathPlanner::updateMotorVelocity(void)
+void LPP::updateMotorVelocity(void)
 {
     static bool moving_state = false;
     static float theta_error_integration = 0;
@@ -75,7 +69,7 @@ void LocalPathPlanner::updateMotorVelocity(void)
 
         // verify if destination is reached
         if(set_points.size() <= 1) {
-            destination_reached = true;
+            stop_robot = true;
             break;
         }
 
@@ -89,12 +83,12 @@ void LocalPathPlanner::updateMotorVelocity(void)
         distance = sqrtf(error_x*error_x + error_y*error_y);
     }
 
-    if(VERBOSE_LOCAL_PATH_PLANNER) {
+    if(LPP_VERBOSE) {
         std::cout << "pose: (" << pose[0] << "," << pose[1] << "," << pose[2] << "), set_points[0]: " << set_points[0].x 
                   << "," << set_points[0].x << ")" << std::endl;
     } 
 
-    if(destination_reached) {
+    if(stop_robot) {
         robotStop();
     } else {
         // calc. error in orientation (theta) and integrated theta
@@ -104,7 +98,7 @@ void LocalPathPlanner::updateMotorVelocity(void)
         time_update_error = current_time;
         theta_error_integration != delta_time_error.toSec()*theta_error;
 
-        if(VERBOSE_LOCAL_PATH_PLANNER) {
+        if(LPP_VERBOSE) {
             std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error 
             			 << "), atan=" << atan2f(error_y, error_x) 
                       <<  ", theta_error_integration: " << theta_error_integration << std::endl;
@@ -126,7 +120,7 @@ void LocalPathPlanner::updateMotorVelocity(void)
     }
 }
 
-void LocalPathPlanner::updatePose()
+void LPP::updatePose()
 {
     // measure time passed since last update and set current time
     ros::Time current_time = ros::Time::now();
@@ -144,19 +138,19 @@ void LocalPathPlanner::updatePose()
     pose[2] = limitAngle(pose[2]);
 }
 
-void LocalPathPlanner::robotStop(void)
+void LPP::robotStop(void)
 {
     motor_vel[0] = 0;
     motor_vel[1] = 0;
     motor_vel[2] = 0;
     motor_vel[3] = 0;
 
-    if(VERBOSE_LOCAL_PATH_PLANNER) {
+    if(LPP_VERBOSE) {
         std::cout << "robotStop" << std::endl;
     } 
 }
 
-void LocalPathPlanner::robotMove(float theta_error, float theta_error_integration)
+void LPP::robotMove(float theta_error, float theta_error_integration)
 {
     float vel = VEL_MOVE_PID_KP*theta_error + VEL_MOVE_PID_KI*theta_error_integration;
     vel = limitVelocity(vel, VEL_MOVE_MAX, 0);
@@ -166,12 +160,12 @@ void LocalPathPlanner::robotMove(float theta_error, float theta_error_integratio
     motor_vel[2] = VEL_MOVE_BIAS - vel;
     motor_vel[3] = VEL_MOVE_BIAS - vel;
 
-    if(VERBOSE_LOCAL_PATH_PLANNER) {
+    if(LPP_VERBOSE) {
         std::cout << "robotMove: vel=" << vel << std::endl;
     } 
 }
 
-void LocalPathPlanner::robotTurn(float theta_error)
+void LPP::robotTurn(float theta_error)
 {
     float vel = VEL_TURN_PID_KP*theta_error;
     vel = limitVelocity(vel, VEL_TURN_MAX, VEL_TURN_MIN);
@@ -181,12 +175,12 @@ void LocalPathPlanner::robotTurn(float theta_error)
     motor_vel[2] = -vel;
     motor_vel[3] = -vel;
 
-    if(VERBOSE_LOCAL_PATH_PLANNER) {
+    if(LPP_VERBOSE) {
         std::cout << "robotTurn" << std::endl;
     } 
 }
 
-float LocalPathPlanner::limitVelocity(float vel, float max, float min)
+float LPP::limitVelocity(float vel, float max, float min)
 {
     if(vel>max) {
         vel = max;
@@ -200,7 +194,7 @@ float LocalPathPlanner::limitVelocity(float vel, float max, float min)
     return vel;  
 }
 
-float LocalPathPlanner::limitAngle(float angle)
+float LPP::limitAngle(float angle)
 {
     while(angle>PI) {
         angle -= 2*PI;

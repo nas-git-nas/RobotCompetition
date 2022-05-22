@@ -9,6 +9,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "dm.h"
 #include "map.h"
 
 std::vector<cv::Point> Map::getNodes(void){
@@ -32,7 +33,7 @@ void Map::saveRawData(const nav_msgs::OccupancyGrid::ConstPtr &msg)
 	}
 	new_data = true;
 	
-	if(VERBOSE_RAW_DATA) {
+	if(MAP_VERBOSE_RAW_DATA) {
 		std::cout << "map: = "<< std::endl << " " 
 					 << map_raw << std::endl << std::endl;
 	}
@@ -43,10 +44,10 @@ bool Map::preprocessData(void)
 	cv::Mat m_thr = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8UC1, -2);	
 	cv::Mat m_dil;
 	
-	if(SAVE_MAP) {
+	if(MAP_DRAW_MAP) {
 		cv::imwrite("map.jpg", map_raw);
 	}
-	if(VERBOSE_PREPROCESS) {
+	if(MAP_VERBOSE_PREPROCESS) {
 		std::cout << "map_raw =" << std::endl << " " << map_raw 
 		          << std::endl << std::endl;
 	}
@@ -65,22 +66,25 @@ bool Map::preprocessData(void)
 			} else { return false; }
 		}
 	}
-	if(SAVE_MAP) {
+	if(MAP_DRAW_MAP) {
 		cv::imwrite("map_threshold.jpg", m_thr);
 	}	
 	
+
+	
+#ifdef DEBUG_FAKE_MAP	
+	/* --- for testing without LIDAR --- */
+	cv::Mat m = cv::imread("maps/map15.pgm", cv::IMREAD_GRAYSCALE);	
+	cv::threshold(m, m_thr, 160, 255, cv::THRESH_BINARY);
+	/* ---                           --- */
+#endif
+
 	// expand obstacle by robot size
 	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, 
-																cv::Size(11,11));
+																cv::Size(11,11));	
 	cv::erode(m_thr, m_dil, kernel);
 	
-	/* --- for testing without LIDAR --- */
-	//cv::Mat m = cv::imread("maps/map15.pgm", cv::IMREAD_GRAYSCALE);	
-	//cv::threshold(m, m_thr, 160, 255, cv::THRESH_BINARY);
-	//cv::dilate(m_thr, m_dil, kernel);
-	/* ---                           --- */
-	
-	if(SAVE_MAP) {
+	if(MAP_DRAW_MAP) {
 		cv::imwrite("map_erode.jpg", m_dil);
 	}
 	
@@ -103,7 +107,7 @@ void Map::calcPolygons(cv::Point current_position,
 	for(int i=0; i<contours.size(); i++) {
 		cv::approxPolyDP(cv::Mat(contours[i]), polygons[i], 10, true);
 	}
-	if(SAVE_MAP) {
+	if(MAP_DRAW_MAP) {
 		cv::Mat m_pol;
 		cv::cvtColor(map_preprocessed, m_pol, cv::COLOR_GRAY2BGR);
 		cv::drawContours(m_pol, polygons, -1, cv::Scalar(0,0,255), 1);
@@ -133,7 +137,7 @@ void Map::calcPolygons(cv::Point current_position,
 
 void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path)
 {
-	if(SAVE_MAP) {
+	if(MAP_DRAW_MAP) {
 		cv::Mat m_gra = map_preprocessed;
 
 		// draw visibility graph lines

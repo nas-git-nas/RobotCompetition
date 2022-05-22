@@ -1,5 +1,6 @@
 #include "ros/ros.h"
-#include "global_path_planner/LocalPathPlanner.h"
+#include "robot/LocalPathPlanner.h"
+#include "robot/WindowsMsg.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/Float32MultiArray.h"
@@ -14,6 +15,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
+#include "dm.h"
 #include "map.h"
 #include "visibility_graph.h"
 #include "dijkstra.h"
@@ -75,11 +77,11 @@ void arduinoCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
 
 
 
-void initLPPService(ros::ServiceClient &lpp_client, 
-							global_path_planner::LocalPathPlanner &lpp_srv)
+void stopMotors(ros::ServiceClient &lpp_client, 
+							robot::LocalPathPlanner &lpp_srv)
 	
 {
-	std::vector<uint16_t> trajectory_x;
+	/*std::vector<uint16_t> trajectory_x;
 	std::vector<uint16_t> trajectory_y;
 	trajectory_x.push_back(0);
 	trajectory_x.push_back(0);
@@ -92,8 +94,8 @@ void initLPPService(ros::ServiceClient &lpp_client,
 	lpp_srv.request.trajectory_x = trajectory_x;
 	lpp_srv.request.trajectory_y = trajectory_y;
 	lpp_srv.request.nb_nodes = trajectory_y.size();
-	lpp_srv.request.heading = angle;
-	lpp_srv.request.stop_motor = 1;
+	lpp_srv.request.heading = angle;*/
+	lpp_srv.request.stop_motor = true;
 
 	if(lpp_client.call(lpp_srv))
 	{
@@ -106,36 +108,33 @@ void initLPPService(ros::ServiceClient &lpp_client,
 }
 
 void gpp(ros::ServiceClient &lpp_client, 
-			global_path_planner::LocalPathPlanner &lpp_srv, 
+			robot::LocalPathPlanner &lpp_srv, Dijkstra& dijkstra,
 			cv::Point destination)
 {
-
-	/* --- for testing without LIDAR --- */
-	//pose.position.x = 480;
-	//pose.position.y = 410;
-	/* ---                           --- */
-
-	ROS_INFO_STREAM("dm::gpp::position: (" << pose.position.x 
-						 << "," << pose.position.y << ")");
-	ROS_INFO_STREAM("dm::gpp::destination: (" << destination.x 
-						 << "," << destination.y << ")");
+	if(DM_VERBOSE_GPP) {
+		ROS_INFO_STREAM("dm::gpp::position: (" << pose.position.x 
+							 << "," << pose.position.y << ")");
+		ROS_INFO_STREAM("dm::gpp::destination: (" << destination.x 
+							 << "," << destination.y << ")");
+	}
 
 	VisibilityGraph visibility_graph;
-	Dijkstra dijkstra;
 	
 	map.calcPolygons(pose.position, destination);
 	std::vector<cv::Point> nodes = map.getNodes();
+
 	
-  	visibility_graph.calcGraph(nodes, map.getNodePolygon());		
+  	visibility_graph.calcGraph(nodes, map.getNodePolygon());
+  		
   	if(!dijkstra.calcPath(visibility_graph.getGraph())) {
   		ROS_ERROR("dm::gpp::dijkstra: failed to find shortest path");
-  		initLPPService(lpp_client, lpp_srv);
+  		stopMotors(lpp_client, lpp_srv);
   	} else {
 
 	  	std::vector<int> path = dijkstra.getShortestPath();
+
 	  	
-	  	//std::cout << "dm::gpp: path: " << path << std::endl;
-	  	
+#ifndef DEBUG_WITHOUT_LPP
 		std::vector<uint16_t> trajectory_x;
 		std::vector<uint16_t> trajectory_y;
 		
@@ -158,14 +157,40 @@ void gpp(ros::ServiceClient &lpp_client,
 		{
 			ROS_ERROR("Failed to call service lpp_service");
 		}
+#endif
 		
 	  	map.draw_graph(visibility_graph.getGraph(), 
 	  							dijkstra.getShortestPath());
 	}
 	//map.printMap();
 	
+	
+	
 }
 
+void windowsLog(ros::Publisher& windows_pub, Dijkstra& dijkstra)
+{
+	std::vector<cv::Point> nodes = map.getNodes();
+	std::vector<int> polygons = map.getNodePolygon();
+	std::vector<int> path = dijkstra.getShortestPath();
+	
+	robot::WindowsMsg msg;
+
+	msg.nb_nodes = nodes.size();	
+	for(int i=0; i<nodes.size(); i++) {
+
+		msg.polygons.push_back(polygons[i]);
+		msg.nodes_x.push_back(nodes[i].x);
+		msg.nodes_y.push_back(nodes[i].y);
+	}
+
+	msg.nb_path_nodes = path.size();
+	for(int i=0; i<path.size(); i++) {
+		msg.path.push_back(path[i]);
+	}
+
+	windows_pub.publish(msg);
+}
 
 
 int main(int argc, char **argv)
@@ -178,15 +203,22 @@ int main(int argc, char **argv)
 	ros::Subscriber sub = n.subscribe("map", 100, mapCallback);
 	ros::Subscriber sub2 = n.subscribe("slam_out_pose", 100, poseCallback);
 	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 10, arduinoCB);
+	
+	// publisher of topics
+	ros::Publisher windows_pub = 
+					n.advertise<robot::WindowsMsg>("windows_pub", 10);
 				
 	// create client of service			
 	ros::ServiceClient lpp_client = 
-	 n.serviceClient<global_path_planner::LocalPathPlanner>("lpp_service");
-	global_path_planner::LocalPathPlanner lpp_srv;
+	 n.serviceClient<robot::LocalPathPlanner>("lpp_service");
+	robot::LocalPathPlanner lpp_srv;
 	
+	
+	Dijkstra dijkstra;
 
+#ifndef DEBUG_WITHOUT_LPP 
 	initLPPService(lpp_client, lpp_srv);
-	ROS_INFO_STREAM("--GPP::start1\n");
+#endif
 
 	ros::Duration(3, 0).sleep();
 	ROS_INFO_STREAM("--GPP::start\n");
@@ -201,24 +233,39 @@ int main(int argc, char **argv)
   		ros::spinOnce(); 		
   		ROS_INFO_STREAM("--GPP: " << counter << "\n");
   		
+  		
+  		
   		if(!map.preprocessData()) {
   			ROS_ERROR("gpp::map::preprocessData");
-  		}		
+  		}	
   		/* --- DECISION MAKER --- */	
   		
-  		if(!destination_set) {
+  		
+#ifdef DEBUG_FAKE_MAP
+		pose.position.x = 480 + counter*5;
+		pose.position.y = 410;
+  		destination.x = 550; //pose.position.x + 200;
+  		destination.y = 200; //pose.position.y;
+#else
+		if(!destination_set) {
 	  		destination.x = pose.position.x + 200;
 	  		destination.y = pose.position.y;
 	  		destination_set = true;
 	  	}
+#endif
+
   		/* ---                --- */		
-  		gpp(lpp_client, lpp_srv, destination);
+  		gpp(lpp_client, lpp_srv, dijkstra, destination);
+  		windowsLog(windows_pub, dijkstra);
   		
-  		
+  		stopMotors(lpp_client, lpp_srv);
+
+#ifndef DEBUG_WITHOUT_LPP  		
   		if(counter>20) {
-  			initLPPService(lpp_client, lpp_srv);
+  			stopMotors(lpp_client, lpp_srv);
   			ros::Duration(5, 0).sleep();
   		}
+#endif
   		
   		counter++;		
 

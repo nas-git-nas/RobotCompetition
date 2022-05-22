@@ -16,7 +16,7 @@
 #ifndef LOCAL_PATH_PLANNER_H // include header file only once
 #define LOCAL_PATH_PLANNER_H
 
-#define VERBOSE_LOCAL_PATH_PLANNER false
+#define LPP_VERBOSE false
 
 #define WHEEL_RADIUS 0.0505 // in m
 #define INTER_WHEEL_DISTANCE 0.306 // in m
@@ -37,13 +37,13 @@
 #define PI 3.1415927
 #define M2GRID 100 // convert meters to grid (each pixel is one cm)
 
-class LocalPathPlanner
+class LPP
 {
    public:
 		/*** FUNCTIONS ***/
 		void setPoseAndSetPoints(std::vector<cv::Point> trajectory, 
 										 float new_heading);
-		void stopRobot(void);
+		void stopMotors(void);
 		std::array<float,4> getMotorVelocity(void);
 		std::array<float,3> getPose(void);
 		std::vector<cv::Point> getSetPoints(void);
@@ -56,7 +56,7 @@ class LocalPathPlanner
 		std::array<float,4> motor_vel = {0,0,0,0}; // {right front, right back, left front, left back}
 		ros::Time time_update_pose;
 		bool destination_reached = true;
-		bool stop_robot = false;
+		bool stop_robot = true;
 
 		/*** FUNCTIONS ***/
 		void updateMotorVelocity(void);

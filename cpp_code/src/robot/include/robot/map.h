@@ -14,9 +14,7 @@
 
 #define MAP_SIZE	500 // map size in pixels
 #define PIXEL_THRESHOLD 60 // pixel oppucancy certainty: [0,100]
-#define VERBOSE_RAW_DATA false
-#define VERBOSE_PREPROCESS false
-#define SAVE_MAP true
+
 
 
 // class containing map

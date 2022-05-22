@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 
+#include "dm.h"
 #include "dijkstra.h"
 
 
@@ -46,7 +47,7 @@ bool Dijkstra::calcPath(std::vector<std::vector<int>> graph)
 		// Mark the picked vertex as processed
 		sptSet[u] = true;
 		
-		if(VERBOSE_DIJKSTRA) {
+		if(DIJKSTRA_VERBOSE) {
 			std::cout << "u=" << u <<  ", graph.size()=" << graph.size() << std::endl;
 		}
 
@@ -78,7 +79,7 @@ bool Dijkstra::calcPath(std::vector<std::vector<int>> graph)
 				dist[v] = dist[u] + dist_uv;
 				prev[v] = u;
 				
-				if(VERBOSE_DIJKSTRA) {
+				if(DIJKSTRA_VERBOSE) {
 					std::cout << "---(u=" << u << ",v=" << v <<"), dist_uv=" << dist_uv << " sptSet=" 
 								 << sptSet[v] << " dist[u]=" << dist[u] << " dist[v]=" << dist[v] 
 								 << " prev[v]=" << prev[v] << std::endl;
@@ -94,7 +95,7 @@ bool Dijkstra::calcPath(std::vector<std::vector<int>> graph)
 	int current = start;
 	
 	while(current != goal) {
-		if(VERBOSE_DIJKSTRA) {
+		if(DIJKSTRA_VERBOSE) {
 			std::cout << "current=" << current << ", prev=" << prev[current] << std::endl;
 		}
 		
@@ -103,7 +104,6 @@ bool Dijkstra::calcPath(std::vector<std::vector<int>> graph)
 		
 		if(current<0) { return false; } // no path was found
 	}
-
 	return true;
 }
 

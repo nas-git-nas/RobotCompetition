@@ -1,6 +1,0 @@
-<launch>
-
-	<node pkg="global_path_planner" type="global_path_planner" 
-	name="global_path_planner" output="screen"/>
-	
-</launch>

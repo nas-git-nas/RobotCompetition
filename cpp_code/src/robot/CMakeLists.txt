@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(global_path_planner)
+project(robot)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -52,6 +52,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
 	FILES
 	Num.msg
+	WindowsMsg.msg
+	#PointInt16.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -121,7 +123,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
-  include/global_path_planner
+  include/robot
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   #src/spholes
@@ -221,27 +223,26 @@ include_directories(
 
 add_executable(talker src/talker.cpp)
 target_link_libraries(talker ${catkin_LIBRARIES})
-add_dependencies(talker global_path_planner_generate_messages_cpp)
+add_dependencies(talker robot_generate_messages_cpp)
 
 add_executable(listener src/listener.cpp)
 target_link_libraries(listener ${catkin_LIBRARIES})
-add_dependencies(listener global_path_planner_generate_messages_cpp)
+add_dependencies(listener robot_generate_messages_cpp)
 
 add_executable(add_two_ints_server src/add_two_ints_server.cpp)
 target_link_libraries(add_two_ints_server ${catkin_LIBRARIES})
-add_dependencies(add_two_ints_server global_path_planner_gencpp)
+add_dependencies(add_two_ints_server robot_gencpp)
 
-add_executable(lpp_server src/lpp_server.cpp src/local_path_planner.cpp)
-target_link_libraries(lpp_server ${catkin_LIBRARIES})
-add_dependencies(lpp_server global_path_planner_gencpp)
+add_executable(lpp_node src/lpp_node.cpp src/lpp.cpp)
+target_link_libraries(lpp_node ${catkin_LIBRARIES})
+add_dependencies(lpp_node robot_gencpp)
 
 add_executable(add_two_ints_client src/add_two_ints_client.cpp)
 target_link_libraries(add_two_ints_client ${catkin_LIBRARIES})
-add_dependencies(add_two_ints_client global_path_planner_gencpp)
+add_dependencies(add_two_ints_client robot_gencpp)
 
-add_executable(global_path_planner src/global_path_planner.cpp src/map.cpp 
-					src/visibility_graph.cpp src/dijkstra.cpp 
-					src/local_path_planner.cpp)
-target_link_libraries(global_path_planner ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
-add_dependencies(global_path_planner global_path_planner_gencpp)
+add_executable(dm src/dm.cpp src/map.cpp 
+					src/visibility_graph.cpp src/dijkstra.cpp)
+target_link_libraries(dm ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(dm robot_gencpp)
 

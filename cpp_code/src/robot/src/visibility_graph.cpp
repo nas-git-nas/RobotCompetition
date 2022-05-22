@@ -1,15 +1,11 @@
 
-//#include "std_msgs/String.h"
-
 #include <vector>
 #include <typeinfo>
 #include <iostream>
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
-//#include <opencv2/highgui/highgui.hpp>
-//#include <opencv2/imgproc.hpp>
 
-
+#include "dm.h"
 #include "visibility_graph.h"
 
 std::vector<std::vector<int>> VisibilityGraph::getGraph(void){
@@ -55,7 +51,7 @@ void VisibilityGraph::calcGraph(std::vector<cv::Point> nodes, std::vector<int> n
 			// define all connection invisible if points are not direct neighboors
 			if(node_polygon[i]==node_polygon[j]) { 
 				visible = verifyVisibilitySamePolygon(i, j, node_polygon);
-				if(VERBOSE_VISIBILITY) {
+				if(VISIBILITY_VERBOSE) {
 					std::cout << "(" << i << "," << j << ") = "
 									<< visible << " -> same Polygon" << std::endl;
 				}	
@@ -63,7 +59,7 @@ void VisibilityGraph::calcGraph(std::vector<cv::Point> nodes, std::vector<int> n
 			// if edge point is on different polygon than node
 			// loop through all edges that may prevent visibility	
 			else {	
-				if(VERBOSE_VISIBILITY) {
+				if(VISIBILITY_VERBOSE) {
 					std::cout << "(" << nb_nodes-1 << "," << nb_edges-1 << ") = ";
 				}
 				
@@ -81,7 +77,7 @@ void VisibilityGraph::calcGraph(std::vector<cv::Point> nodes, std::vector<int> n
 
 	
 	
-	if(VERBOSE_VISIBILITY) {
+	if(VISIBILITY_VERBOSE) {
 		std::cout << "Graph: " << std::endl;
 		for(int i=0; i<graph.size(); i++) {
 			for(int j=0; j<graph[i].size(); j++) {
@@ -128,14 +124,14 @@ bool VisibilityGraph::verifyVisibilityDifferentPolygon(int i, int j, std::vector
 			
 		// check if line between p1 and p2 intersect with line q1 and q2
 		if(doIntersect(nodes[i], nodes[j], nodes[k], nodes[l])) {				
-			if(VERBOSE_VISIBILITY) {
+			if(VISIBILITY_VERBOSE) {
 				std::cout << "false -> intersect = (" << k << "); (" << l << "); " << std::endl;
 			}
 			return false;									
 		}		
 	}
 		
-	if(VERBOSE_VISIBILITY) {
+	if(VISIBILITY_VERBOSE) {
 		std::cout << "true -> no intersect" << std::endl;
 	}
 	return true;		

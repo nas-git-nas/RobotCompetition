@@ -1,0 +1,11 @@
+<launch>
+
+	<node pkg="robot" type="dm" 
+	name="dm" output="screen"/>
+	
+	<node pkg="robot" type="lpp_server" name="lpp_server" 
+	output="screen"/>
+	
+
+	
+</launch>
