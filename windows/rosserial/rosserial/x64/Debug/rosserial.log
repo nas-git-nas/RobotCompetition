@@ -1,0 +1,21 @@
+﻿  rosserial.cpp
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\ros_lib\rosserial_msgs\TopicInfo.h(49,1): warning C4267: 'initializing': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\ros_lib\rosserial_msgs\TopicInfo.h(54,1): warning C4267: 'initializing': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\ros_lib\rosserial_msgs\TopicInfo.h(59,1): warning C4267: 'initializing': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\ros_lib\rosserial_msgs\Log.h(36,1): warning C4267: 'initializing': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\ros_lib\rosserial_msgs\RequestParam.h(27,1): warning C4267: 'initializing': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\ros_lib\rosserial_msgs\RequestParam.h(121,1): warning C4267: 'initializing': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\ros_lib\std_msgs\MultiArrayDimension.h(32,1): warning C4267: 'initializing': conversion from 'size_t' to 'uint32_t', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\rosserial\rosserial.cpp(25,36): warning C4244: 'return': conversion from 'double' to 'float', possible loss of data
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\rosserial\rosserial.cpp(53,31): warning C4244: 'argument': conversion from '_Tp' to 'float', possible loss of data
+          with
+          [
+              _Tp=int
+          ]
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\rosserial\rosserial.cpp(53,64): warning C4244: 'argument': conversion from '_Tp' to 'float', possible loss of data
+          with
+          [
+              _Tp=int
+          ]
+C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\rosserial\rosserial.cpp(86,56): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+  rosserial.vcxproj -> C:\Users\nicol\Documents\EPFL\8Semester\RobotCompetition\Code\RobotCompetition\windows\rosserial\x64\Debug\rosserial.exe
