@@ -5,8 +5,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "ros/msg.h"
-#include "std_msgs/Float32.h"
-#include "std_msgs/Int32.h"
 
 namespace global_path_planner
 {
@@ -14,35 +12,159 @@ namespace global_path_planner
   class WindowsMsg : public ros::Msg
   {
     public:
-      typedef std_msgs::Float32 _var1_type;
-      _var1_type var1;
-      typedef std_msgs::Int32 _var2_type;
-      _var2_type var2;
+      typedef uint16_t _nb_nodes_type;
+      _nb_nodes_type nb_nodes;
+      uint32_t polygons_length;
+      typedef uint16_t _polygons_type;
+      _polygons_type st_polygons;
+      _polygons_type * polygons;
+      uint32_t nodes_x_length;
+      typedef uint16_t _nodes_x_type;
+      _nodes_x_type st_nodes_x;
+      _nodes_x_type * nodes_x;
+      uint32_t nodes_y_length;
+      typedef uint16_t _nodes_y_type;
+      _nodes_y_type st_nodes_y;
+      _nodes_y_type * nodes_y;
+      typedef uint16_t _nb_path_nodes_type;
+      _nb_path_nodes_type nb_path_nodes;
+      uint32_t path_length;
+      typedef uint16_t _path_type;
+      _path_type st_path;
+      _path_type * path;
 
     WindowsMsg():
-      var1(),
-      var2()
+      nb_nodes(0),
+      polygons_length(0), st_polygons(), polygons(nullptr),
+      nodes_x_length(0), st_nodes_x(), nodes_x(nullptr),
+      nodes_y_length(0), st_nodes_y(), nodes_y(nullptr),
+      nb_path_nodes(0),
+      path_length(0), st_path(), path(nullptr)
     {
     }
 
     virtual int serialize(unsigned char *outbuffer) const override
     {
       int offset = 0;
-      offset += this->var1.serialize(outbuffer + offset);
-      offset += this->var2.serialize(outbuffer + offset);
+      *(outbuffer + offset + 0) = (this->nb_nodes >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->nb_nodes >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->nb_nodes);
+      *(outbuffer + offset + 0) = (this->polygons_length >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->polygons_length >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (this->polygons_length >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (this->polygons_length >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->polygons_length);
+      for( uint32_t i = 0; i < polygons_length; i++){
+      *(outbuffer + offset + 0) = (this->polygons[i] >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->polygons[i] >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->polygons[i]);
+      }
+      *(outbuffer + offset + 0) = (this->nodes_x_length >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->nodes_x_length >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (this->nodes_x_length >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (this->nodes_x_length >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->nodes_x_length);
+      for( uint32_t i = 0; i < nodes_x_length; i++){
+      *(outbuffer + offset + 0) = (this->nodes_x[i] >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->nodes_x[i] >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->nodes_x[i]);
+      }
+      *(outbuffer + offset + 0) = (this->nodes_y_length >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->nodes_y_length >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (this->nodes_y_length >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (this->nodes_y_length >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->nodes_y_length);
+      for( uint32_t i = 0; i < nodes_y_length; i++){
+      *(outbuffer + offset + 0) = (this->nodes_y[i] >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->nodes_y[i] >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->nodes_y[i]);
+      }
+      *(outbuffer + offset + 0) = (this->nb_path_nodes >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->nb_path_nodes >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->nb_path_nodes);
+      *(outbuffer + offset + 0) = (this->path_length >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->path_length >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (this->path_length >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (this->path_length >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->path_length);
+      for( uint32_t i = 0; i < path_length; i++){
+      *(outbuffer + offset + 0) = (this->path[i] >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->path[i] >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->path[i]);
+      }
       return offset;
     }
 
     virtual int deserialize(unsigned char *inbuffer) override
     {
       int offset = 0;
-      offset += this->var1.deserialize(inbuffer + offset);
-      offset += this->var2.deserialize(inbuffer + offset);
+      this->nb_nodes =  ((uint16_t) (*(inbuffer + offset)));
+      this->nb_nodes |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->nb_nodes);
+      uint32_t polygons_lengthT = ((uint32_t) (*(inbuffer + offset))); 
+      polygons_lengthT |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1); 
+      polygons_lengthT |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2); 
+      polygons_lengthT |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3); 
+      offset += sizeof(this->polygons_length);
+      if(polygons_lengthT > polygons_length)
+        this->polygons = (uint16_t*)realloc(this->polygons, polygons_lengthT * sizeof(uint16_t));
+      polygons_length = polygons_lengthT;
+      for( uint32_t i = 0; i < polygons_length; i++){
+      this->st_polygons =  ((uint16_t) (*(inbuffer + offset)));
+      this->st_polygons |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->st_polygons);
+        memcpy( &(this->polygons[i]), &(this->st_polygons), sizeof(uint16_t));
+      }
+      uint32_t nodes_x_lengthT = ((uint32_t) (*(inbuffer + offset))); 
+      nodes_x_lengthT |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1); 
+      nodes_x_lengthT |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2); 
+      nodes_x_lengthT |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3); 
+      offset += sizeof(this->nodes_x_length);
+      if(nodes_x_lengthT > nodes_x_length)
+        this->nodes_x = (uint16_t*)realloc(this->nodes_x, nodes_x_lengthT * sizeof(uint16_t));
+      nodes_x_length = nodes_x_lengthT;
+      for( uint32_t i = 0; i < nodes_x_length; i++){
+      this->st_nodes_x =  ((uint16_t) (*(inbuffer + offset)));
+      this->st_nodes_x |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->st_nodes_x);
+        memcpy( &(this->nodes_x[i]), &(this->st_nodes_x), sizeof(uint16_t));
+      }
+      uint32_t nodes_y_lengthT = ((uint32_t) (*(inbuffer + offset))); 
+      nodes_y_lengthT |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1); 
+      nodes_y_lengthT |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2); 
+      nodes_y_lengthT |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3); 
+      offset += sizeof(this->nodes_y_length);
+      if(nodes_y_lengthT > nodes_y_length)
+        this->nodes_y = (uint16_t*)realloc(this->nodes_y, nodes_y_lengthT * sizeof(uint16_t));
+      nodes_y_length = nodes_y_lengthT;
+      for( uint32_t i = 0; i < nodes_y_length; i++){
+      this->st_nodes_y =  ((uint16_t) (*(inbuffer + offset)));
+      this->st_nodes_y |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->st_nodes_y);
+        memcpy( &(this->nodes_y[i]), &(this->st_nodes_y), sizeof(uint16_t));
+      }
+      this->nb_path_nodes =  ((uint16_t) (*(inbuffer + offset)));
+      this->nb_path_nodes |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->nb_path_nodes);
+      uint32_t path_lengthT = ((uint32_t) (*(inbuffer + offset))); 
+      path_lengthT |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1); 
+      path_lengthT |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2); 
+      path_lengthT |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3); 
+      offset += sizeof(this->path_length);
+      if(path_lengthT > path_length)
+        this->path = (uint16_t*)realloc(this->path, path_lengthT * sizeof(uint16_t));
+      path_length = path_lengthT;
+      for( uint32_t i = 0; i < path_length; i++){
+      this->st_path =  ((uint16_t) (*(inbuffer + offset)));
+      this->st_path |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->st_path);
+        memcpy( &(this->path[i]), &(this->st_path), sizeof(uint16_t));
+      }
      return offset;
     }
 
     virtual const char * getType() override { return "global_path_planner/WindowsMsg"; };
-    virtual const char * getMD5() override { return "348eb56e7b29715f3bc3e110e2245551"; };
+    virtual const char * getMD5() override { return "bf6355f6075e601e7ca3afb40331b3a4"; };
 
   };
 
