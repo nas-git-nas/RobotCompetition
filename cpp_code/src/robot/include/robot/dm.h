@@ -1,6 +1,8 @@
 #include <vector>
 #include <iostream>
 
+#include "map.h"
+
 
 #ifndef DM_H // include header file only once
 #define DM_H
@@ -15,6 +17,7 @@
 // map.cpp
 #define MAP_VERBOSE_RAW_DATA false
 #define MAP_VERBOSE_PREPROCESS false
+#define MAP_VERBOSE_CALC_POLYGONS false
 #define MAP_DRAW_MAP true
 
 // visibility.cpp
@@ -29,7 +32,22 @@
 // lpp.cpp
 #define LPP_VERBOSE false
 
+// bd.cpp
+#define BD_VERBOSE false
 
+
+
+
+
+// global variables
+
+Map map;
+
+
+struct Pose {
+	cv::Point position;
+	float heading = 0;
+} pose;
 
 #endif // DM_H
 

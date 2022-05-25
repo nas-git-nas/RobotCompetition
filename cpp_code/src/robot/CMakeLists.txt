@@ -242,7 +242,7 @@ target_link_libraries(add_two_ints_client ${catkin_LIBRARIES})
 add_dependencies(add_two_ints_client robot_gencpp)
 
 add_executable(dm src/dm.cpp src/map.cpp 
-					src/visibility_graph.cpp src/dijkstra.cpp)
+					src/visibility_graph.cpp src/dijkstra.cpp src/bd.cpp)
 target_link_libraries(dm ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(dm robot_gencpp)
 

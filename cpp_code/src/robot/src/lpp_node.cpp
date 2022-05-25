@@ -65,9 +65,12 @@ void logLPP(LPP &lpp)
 bool setLPPCallback(global_path_planner::LocalPathPlanner::Request  &req,
          			  global_path_planner::LocalPathPlanner::Response &res)
 {
-	ROS_INFO("inside callback");
 	if(req.stop_motor) {
 		lpp.stopMotors();
+		
+		if(LPP_NODE_VERBOSE) {
+			ROS_INFO_STREAM("lpp_node::setLPPCB: call lpp.stop_motor");
+		}
 	} else {
 		std::vector<cv::Point> trajectory;
 		for(int i=0; i<req.nb_nodes; i++) {
@@ -80,6 +83,10 @@ bool setLPPCallback(global_path_planner::LocalPathPlanner::Request  &req,
 		float new_heading = req.heading;
 
 		lpp.setPoseAndSetPoints(trajectory, new_heading);
+		
+		if(LPP_NODE_VERBOSE) {
+			ROS_INFO_STREAM("lpp_node::setLPPCB: call lpp.setPoseAndSetPoints");
+		}
 
 		res.motor_vel[0] = 0.5;
 		res.motor_vel[1] = 0.5;

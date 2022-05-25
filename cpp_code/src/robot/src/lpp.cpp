@@ -26,6 +26,7 @@ void LPP::stopMotors(void)
 {
 	robotStop();
 	stop_robot = true;
+	//ROS_INFO_STREAM("lpp::stopMotors::stop_robot = " << stop_robot);
 }
 
 std::array<float,4> LPP::getMotorVelocity(void)
@@ -33,6 +34,10 @@ std::array<float,4> LPP::getMotorVelocity(void)
 	if(!stop_robot) {
    	updateMotorVelocity();
    }
+   /*ROS_INFO_STREAM("lpp::tegMotorVel::motor_vel: (" << motor_vel[0] << "," 
+	  					 			<< motor_vel[1] << "," << motor_vel[2] 
+	  					 			<< "," << motor_vel[3] << ")");
+	ROS_INFO_STREAM("lpp::tegMotorVel::stop_robot: " << stop_robot);*/
    return motor_vel;
 }
 
@@ -84,8 +89,10 @@ void LPP::updateMotorVelocity(void)
     }
 
     if(LPP_VERBOSE) {
-        std::cout << "pose: (" << pose[0] << "," << pose[1] << "," << pose[2] << "), set_points[0]: " << set_points[0].x 
-                  << "," << set_points[0].x << ")" << std::endl;
+        ROS_INFO_STREAM("pose: (" << pose[0] << "," << pose[1] << "," << pose[2] 
+        				<< "), set_points[0]: (" << set_points[0].x 
+                  << "," << set_points[0].y << "), nb. set_points: " 
+                  << set_points.size() );
     } 
 
     if(stop_robot) {

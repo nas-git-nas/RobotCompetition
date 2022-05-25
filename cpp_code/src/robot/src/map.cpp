@@ -81,7 +81,7 @@ bool Map::preprocessData(void)
 
 	// expand obstacle by robot size
 	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, 
-																cv::Size(11,11));	
+																cv::Size(20,20));	
 	cv::erode(m_thr, m_dil, kernel);
 	
 	if(MAP_DRAW_MAP) {
@@ -105,8 +105,32 @@ void Map::calcPolygons(cv::Point current_position,
 
 	std::vector<std::vector<cv::Point>> polygons(contours.size());		
 	for(int i=0; i<contours.size(); i++) {
+		// approx. contours to get polygons
 		cv::approxPolyDP(cv::Mat(contours[i]), polygons[i], 10, true);
 	}
+
+	// filter out small polygons	
+	int ploygon_size = polygons.size();
+	for(int i=0; i<ploygon_size; i++) {
+		if(cv::contourArea(polygons[i]) < MAP_POLYGON_MIN_SIZE) {
+			polygons.erase(polygons.begin() + i);
+			i -= 1;
+			ploygon_size -= 1;
+		}
+	}
+	
+	if(MAP_VERBOSE_CALC_POLYGONS) {
+		std::cout << std::endl << "polygons.size(): " << polygons.size() << std::endl;
+		for(int i=0; i<polygons.size(); i++) {
+			for(int j=0; j<polygons[i].size(); j++) {
+				std::cout << "(" << polygons[i][j].x << "," << polygons[i][j].y << "), ";
+			}
+			std::cout << std::endl;
+			std::cout << "polygon(" << i << ").size: " << cv::contourArea(polygons[i]) << std::endl;
+		}
+	}
+	
+	
 	if(MAP_DRAW_MAP) {
 		cv::Mat m_pol;
 		cv::cvtColor(map_preprocessed, m_pol, cv::COLOR_GRAY2BGR);

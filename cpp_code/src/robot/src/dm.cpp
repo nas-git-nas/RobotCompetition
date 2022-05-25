@@ -35,13 +35,7 @@
 
 
 
-Map map;
 
-
-struct {
-	cv::Point position;
-	float heading = 0;
-} pose;
 
 void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {	
@@ -55,6 +49,9 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 	// convert position in meters to pixels
 	pose.position.x = int(msg->pose.position.x*MAP_M2PIXEL + MAP_OFFSET_X);
 	pose.position.y = int(msg->pose.position.y*MAP_M2PIXEL + MAP_OFFSET_Y);
+	
+	// subtract offset of LIDAR towards robot center
+	pose.position.x -= 18; // verify and declare
 
 	// convert quaternions to radians
 	tf::Quaternion q(msg->pose.orientation.x, msg->pose.orientation.y,
@@ -217,7 +214,7 @@ int main(int argc, char **argv)
 	Dijkstra dijkstra;
 
 #ifndef DEBUG_WITHOUT_LPP 
-	initLPPService(lpp_client, lpp_srv);
+	stopMotors(lpp_client, lpp_srv);
 #endif
 
 	ros::Duration(3, 0).sleep();
@@ -248,7 +245,7 @@ int main(int argc, char **argv)
   		destination.y = 200; //pose.position.y;
 #else
 		if(!destination_set) {
-	  		destination.x = pose.position.x + 200;
+	  		destination.x = pose.position.x + 150;
 	  		destination.y = pose.position.y;
 	  		destination_set = true;
 	  	}
@@ -258,10 +255,10 @@ int main(int argc, char **argv)
   		gpp(lpp_client, lpp_srv, dijkstra, destination);
   		windowsLog(windows_pub, dijkstra);
   		
-  		stopMotors(lpp_client, lpp_srv);
+  		//stopMotors(lpp_client, lpp_srv);
 
 #ifndef DEBUG_WITHOUT_LPP  		
-  		if(counter>20) {
+  		if(counter>10) {
   			stopMotors(lpp_client, lpp_srv);
   			ros::Duration(5, 0).sleep();
   		}
