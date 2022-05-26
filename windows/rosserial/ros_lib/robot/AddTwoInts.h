@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include "ros/msg.h"
 
-namespace global_path_planner
+namespace robot
 {
 
-static const char ADDTWOINTS[] = "global_path_planner/AddTwoInts";
+static const char ADDTWOINTS[] = "robot/AddTwoInts";
 
   class AddTwoIntsRequest : public ros::Msg
   {

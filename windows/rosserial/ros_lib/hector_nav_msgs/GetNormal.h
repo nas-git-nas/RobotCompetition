@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include "ros/msg.h"
-#include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Vector3.h"
+#include "geometry_msgs/PointStamped.h"
 
 namespace hector_nav_msgs
 {

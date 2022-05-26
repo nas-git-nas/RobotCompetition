@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include "ros/msg.h"
 
-namespace global_path_planner
+namespace robot
 {
 
-static const char LOCALPATHPLANNER[] = "global_path_planner/LocalPathPlanner";
+static const char LOCALPATHPLANNER[] = "robot/LocalPathPlanner";
 
   class LocalPathPlannerRequest : public ros::Msg
   {

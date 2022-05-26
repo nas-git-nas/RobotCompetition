@@ -1,12 +1,12 @@
-#ifndef _ROS_global_path_planner_WindowsMsg_h
-#define _ROS_global_path_planner_WindowsMsg_h
+#ifndef _ROS_robot_WindowsMsg_h
+#define _ROS_robot_WindowsMsg_h
 
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include "ros/msg.h"
 
-namespace global_path_planner
+namespace robot
 {
 
   class WindowsMsg : public ros::Msg
@@ -32,6 +32,8 @@ namespace global_path_planner
       typedef uint16_t _path_type;
       _path_type st_path;
       _path_type * path;
+      typedef float _heading_type;
+      _heading_type heading;
 
     WindowsMsg():
       nb_nodes(0),
@@ -39,7 +41,8 @@ namespace global_path_planner
       nodes_x_length(0), st_nodes_x(), nodes_x(nullptr),
       nodes_y_length(0), st_nodes_y(), nodes_y(nullptr),
       nb_path_nodes(0),
-      path_length(0), st_path(), path(nullptr)
+      path_length(0), st_path(), path(nullptr),
+      heading(0)
     {
     }
 
@@ -92,6 +95,16 @@ namespace global_path_planner
       *(outbuffer + offset + 1) = (this->path[i] >> (8 * 1)) & 0xFF;
       offset += sizeof(this->path[i]);
       }
+      union {
+        float real;
+        uint32_t base;
+      } u_heading;
+      u_heading.real = this->heading;
+      *(outbuffer + offset + 0) = (u_heading.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_heading.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_heading.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_heading.base >> (8 * 3)) & 0xFF;
+      offset += sizeof(this->heading);
       return offset;
     }
 
@@ -160,11 +173,22 @@ namespace global_path_planner
       offset += sizeof(this->st_path);
         memcpy( &(this->path[i]), &(this->st_path), sizeof(uint16_t));
       }
+      union {
+        float real;
+        uint32_t base;
+      } u_heading;
+      u_heading.base = 0;
+      u_heading.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_heading.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_heading.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_heading.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->heading = u_heading.real;
+      offset += sizeof(this->heading);
      return offset;
     }
 
-    virtual const char * getType() override { return "global_path_planner/WindowsMsg"; };
-    virtual const char * getMD5() override { return "bf6355f6075e601e7ca3afb40331b3a4"; };
+    virtual const char * getType() override { return "robot/WindowsMsg"; };
+    virtual const char * getMD5() override { return "85aeb599522fe71a0ec6f3093fc04d4f"; };
 
   };
 

@@ -1,12 +1,12 @@
-#ifndef _ROS_global_path_planner_Num_h
-#define _ROS_global_path_planner_Num_h
+#ifndef _ROS_robot_Num_h
+#define _ROS_robot_Num_h
 
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include "ros/msg.h"
 
-namespace global_path_planner
+namespace robot
 {
 
   class Num : public ros::Msg
@@ -83,7 +83,7 @@ namespace global_path_planner
      return offset;
     }
 
-    virtual const char * getType() override { return "global_path_planner/Num"; };
+    virtual const char * getType() override { return "robot/Num"; };
     virtual const char * getMD5() override { return "f8bfa80ae3c7a93455596d9622ad33a9"; };
 
   };

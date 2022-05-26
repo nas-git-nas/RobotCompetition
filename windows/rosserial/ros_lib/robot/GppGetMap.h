@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include "ros/msg.h"
 
-namespace global_path_planner
+namespace robot
 {
 
-static const char GPPGETMAP[] = "global_path_planner/GppGetMap";
+static const char GPPGETMAP[] = "robot/GppGetMap";
 
   class GppGetMapRequest : public ros::Msg
   {
