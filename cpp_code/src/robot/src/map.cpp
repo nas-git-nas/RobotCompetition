@@ -81,7 +81,7 @@ bool Map::preprocessData(void)
 
 	// expand obstacle by robot size
 	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, 
-																cv::Size(20,20));	
+									cv::Size(MAP_DILATION_KERNEL,MAP_DILATION_KERNEL));	
 	cv::erode(m_thr, m_dil, kernel);
 	
 	if(MAP_DRAW_MAP) {

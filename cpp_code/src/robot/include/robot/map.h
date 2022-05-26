@@ -16,6 +16,7 @@
 #define PIXEL_THRESHOLD 60 // pixel oppucancy certainty: [0,100]
 
 #define MAP_POLYGON_MIN_SIZE 200 // min. size of polygon to be not ignored
+#define MAP_DILATION_KERNEL 50 // dilation/expansion of obstacles
 
 
 

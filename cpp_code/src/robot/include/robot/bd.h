@@ -32,9 +32,11 @@ class BottleDetection
 	private:
 		/*** VARIABLES ***/
 		std::array<int,7> ultrasound_meas;
-		ros::Time updated_meas = ros::Time::now();;
+		ros::Time updated_meas = ros::Time::now();
 		
 		/*** FUNCTIONS ***/
 		std::vector<cv::Point> convertMeasurements(void);
 		
-}
+};
+
+#endif // BD_H

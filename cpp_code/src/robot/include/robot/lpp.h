@@ -18,12 +18,12 @@
 
 #define WHEEL_RADIUS 0.0505 // in m
 #define INTER_WHEEL_DISTANCE 0.306 // in m
-#define SET_POINT_DISTANCE_THRESHOLD 5 // in cm
+#define SET_POINT_DISTANCE_THRESHOLD 15 // in cm, error allowed to reach setpoint
 #define TURNING_UPPER_THRESHOLD 0.3491 // in rad, 20°
 #define TURNING_LOWER_THRESHOLD 0.2618 // in rad, 15°
 
-#define VEL_TURN_MAX 3.5// in rad/s
-#define VEL_TURN_MIN 2.5 // in rad/s
+#define VEL_TURN_MAX 1.0 // 3.5// in rad/s
+#define VEL_TURN_MIN 0.7 // in rad/s
 #define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
 #define VEL_TURN_PID_KP 1.0
 

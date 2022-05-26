@@ -1,0 +1,11 @@
+<launch>
+
+	<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
+	
+	<include file="$(find hector_slam_launch)/launch/tutorial_headless.launch"/>
+	
+	<include file="$(find hector_imu_tools)/launch/jasmine_robot.launch"/>
+
+
+	
+</launch>

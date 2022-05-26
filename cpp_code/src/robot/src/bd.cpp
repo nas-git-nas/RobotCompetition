@@ -20,7 +20,8 @@ void BottleDetection::setUltrasound(std::array<int,7>  measurements)
 }
 
 
-std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map, Pose pose)
+std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map_bottle, 
+																				Pose pose)
 {
 	std::vector<cv::Point> bottles;
 
@@ -35,10 +36,12 @@ std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map, Pose pos
 		return bottles;
 	}
 	
+	std::vector<cv::Point> objects = convertMeasurements();
+	
 	// verify if there is an object and if the object is a bottle or an obstacle
 	for(int i=0; i<bottles.size(); i++) {
 		// opject position in robot reference frame
-		cv::Point object(ultrasound_meas[i].x,ultrasound_meas[i].y)
+		cv::Point object(objects[i].x,objects[i].y);
 		
 		// ultrasonic sensor did not measure anything
 		if(object.x==0 && object.y==0) {
@@ -46,14 +49,17 @@ std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map, Pose pos
 		}
 		
 		// calc. object position in global reference frame
-		object.x = pose.position.x + object.x*cos(pose.heading) - object.y*sin(pose.heading);
-		object.y = pose.position.y + object.x*sin(pose.heading) + object.y*cos(pose.heading);
+		object.x = pose.position.x + object.x*cos(pose.heading) 
+											- object.y*sin(pose.heading);
+		object.y = pose.position.y + object.x*sin(pose.heading) 
+											+ object.y*cos(pose.heading);
 		
 		// verify if object is on map (it is an obstacle)
 		bool object_on_map = false;
 		for(int k=0; k<2*BD_SEARCH_RANGE; k++) {
 			for( int l=0; l<2*BD_SEARCH_RANGE; l++) {
-				if(map.at<uint8_t>(object.x-BD_SEARCH_RANGE+k, object.y-BD_SEARCH_RANGE+l) == 0) {
+				if(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k, 
+										 object.y-BD_SEARCH_RANGE+l) == 0) {
 					object_on_map = true;
 					break;
 				}
@@ -76,6 +82,8 @@ std::vector<cv::Point> BottleDetection::convertMeasurements(void)
 	std::array<cv::Point,7> position;
 
 	// TODO: convert ultrasonic measurements from distance to position in robot reference frame
+	
+	std::vector<cv::Point> pos2 = { cv::Point(1,1) };
 
-	return position;
+	return pos2;
 }

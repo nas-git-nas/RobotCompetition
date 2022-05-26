@@ -8,7 +8,7 @@
 #define DM_H
 
 // debugging
-#define DEBUG_FAKE_MAP
+//#define DEBUG_FAKE_MAP
 #define DEBUG_WITHOUT_LPP
 
 // dm.cpp
@@ -41,13 +41,13 @@
 
 // global variables
 
-Map map;
+
 
 
 struct Pose {
 	cv::Point position;
 	float heading = 0;
-} pose;
+};
 
 #endif // DM_H
 
