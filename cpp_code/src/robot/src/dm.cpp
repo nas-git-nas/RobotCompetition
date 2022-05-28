@@ -4,6 +4,7 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/Float32MultiArray.h"
+#include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32.h"
 #include "std_srvs/SetBool.h"
 #include "nav_msgs/OccupancyGrid.h"
@@ -21,6 +22,7 @@
 #include "map.h"
 #include "visibility_graph.h"
 #include "dijkstra.h"
+#include "bd.h"
 
 
 
@@ -36,9 +38,10 @@
 #define MAP_M2PIXEL float(1/MAP_RESOLUTION)
 #define DM_CENTER_OFFSET 15
 
+
+// Global Variables
 Map map;
-
-
+BottleDetection bd;
 Pose pose;
 
 
@@ -82,8 +85,13 @@ void poseCovarianceCB(const
 						 << std::floor(msg->pose.covariance[35]) << ")");
 }
 
-void arduinoCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
+void arduinoCB(const std_msgs::Int32MultiArray::ConstPtr& msg)
 {
+	std::array<int,BD_NB_SENSORS> meas;
+	for(int i=0; i<BD_NB_SENSORS; i++) {
+		meas[i] = msg->data[i];
+	}
+	bd.setUltrasound(meas);
 	/*ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," 
 						<< msg->data[1] << "," << msg->data[2] << "," 
 						<< msg->data[3] << ")" << std::endl);*/
@@ -95,20 +103,6 @@ void stopMotors(ros::ServiceClient &lpp_client,
 							robot::LocalPathPlanner &lpp_srv)
 	
 {
-	/*std::vector<uint16_t> trajectory_x;
-	std::vector<uint16_t> trajectory_y;
-	trajectory_x.push_back(0);
-	trajectory_x.push_back(0);
-	//trajectory_x.push_back(0);
-	trajectory_y.push_back(0);
-	trajectory_y.push_back(0);
-	//trajectory_y.push_back(0);
-	float angle = 0;
-
-	lpp_srv.request.trajectory_x = trajectory_x;
-	lpp_srv.request.trajectory_y = trajectory_y;
-	lpp_srv.request.nb_nodes = trajectory_y.size();
-	lpp_srv.request.heading = angle;*/
 	lpp_srv.request.stop_motor = true;
 
 	if(lpp_client.call(lpp_srv))
@@ -176,9 +170,21 @@ void gpp(ros::ServiceClient &lpp_client,
 	  							dijkstra.getShortestPath());
 	}
 	//map.printMap();
+}
+
+void mainBottleDetection()
+{
+	std::vector<cv::Point> bottles = bd.calcBottlePosition(map.getMapThresholded(), 
+																			 pose);
 	
-	
-	
+	if(MAIN_VERBOSE_BD) {
+		ROS_INFO_STREAM("main::bd: nb. bottles detected = " << bottles.size());
+		for(int i=0; i<bottles.size(); i++) {
+			ROS_INFO_STREAM("main::bd::bottles[" << i << "] = (" << bottles[i].x << ","
+								 << bottles[i].y << ")");
+		}
+	}
+
 }
 
 void windowsLog(ros::Publisher& windows_pub, Dijkstra& dijkstra)
@@ -205,6 +211,33 @@ void windowsLog(ros::Publisher& windows_pub, Dijkstra& dijkstra)
 	msg.heading = pose.heading;
 
 	windows_pub.publish(msg);
+}
+
+void testMainBottleDetection(void)
+{
+#ifdef DEBUG_FAKE_MAP
+	pose.position.x = 480;
+	pose.position.y = 410;
+	pose.heading = 0;
+#endif
+
+#ifdef DEBUG_FAKE_MEAS
+	std::array<int,BD_NB_SENSORS> fake_meas = {10,0,0,10,0,0,0};
+	bd.setUltrasound(fake_meas);
+#endif
+
+	if(MAIN_VERBOSE_BD) {
+		ROS_INFO_STREAM("main::testBD::pose (" << pose.position.x << "," 
+							 << pose.position.y << "," << pose.heading << ")");
+	}
+
+	
+	if(!map.preprocessData()) {
+		ROS_ERROR("gpp::map::preprocessData");
+	}	
+
+	mainBottleDetection();
+
 }
 
 
@@ -240,7 +273,7 @@ int main(int argc, char **argv)
 #endif
 
 	ros::Duration(3, 0).sleep();
-	ROS_INFO_STREAM("--GPP::start\n");
+	ROS_INFO_STREAM("main: start\n");
 	
 	bool destination_set = false;
 	bool hector_slam = true;
@@ -249,16 +282,21 @@ int main(int argc, char **argv)
 	int counter = 0;
 	while(ros::ok()) {
 		
-  		ros::Duration(0.1).sleep();
+  		ros::Duration(1).sleep();
   		ros::spinOnce(); 		
-  		//ROS_INFO_STREAM("--GPP: " << counter << "\n");
+  		ROS_INFO_STREAM("main::counter: " << counter << "\n");
   		
   		
+  		testMainBottleDetection();
   		
+  		
+  		counter++;	
+  		
+  		
+/*  		
   		if(!map.preprocessData()) {
   			ROS_ERROR("gpp::map::preprocessData");
   		}	
-  		/* --- DECISION MAKER --- */	
   		
   		
 #ifdef DEBUG_FAKE_MAP
@@ -274,7 +312,7 @@ int main(int argc, char **argv)
 	  	}
 #endif
 
-  		/* ---                --- */	
+
 		
 		float current_heading = pose.heading*180/3.1314;
 		//ROS_INFO_STREAM("dm::main::pose (" << pose.position.x << "," << pose.position.y << "," << current_heading << ")");
@@ -305,14 +343,15 @@ int main(int argc, char **argv)
   		
   		//stopMotors(lpp_client, lpp_srv);
 
+
 #ifndef DEBUG_WITHOUT_LPP  		
-  		/*if(counter>90) {
+  		if(counter>90) {
   			stopMotors(lpp_client, lpp_srv);
   			ros::Duration(5, 0).sleep();
-  		}*/
+  		}
 #endif
-  		
-  		counter++;		
+*/  		
+	
 
 	}
 	return 0;

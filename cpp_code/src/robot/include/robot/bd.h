@@ -14,6 +14,7 @@
 
 #define BD_UPDATE_TIME_LIMIT 2 // in s, ultrasonic measurement should not be older than this limit
 #define BD_SEARCH_RANGE 4
+#define BD_NB_SENSORS 7
 
 
 
@@ -25,17 +26,29 @@ class BottleDetection
 
 		
 		/*** FUNCTIONS ***/
-		void setUltrasound(std::array<int,7>  measurements); 
+		void setUltrasound(std::array<int,BD_NB_SENSORS> meas);
 		std::vector<cv::Point> calcBottlePosition(cv::Mat map, Pose pose);
 
 							 
 	private:
 		/*** VARIABLES ***/
-		std::array<int,7> ultrasound_meas;
-		ros::Time updated_meas = ros::Time::now();
+		std::array<int,BD_NB_SENSORS> ultrasound_meas;
+		ros::Time updated_meas;
+		
+		// pose of sensor with respect to robot: {x,y,angle}
+		float dist_to_robot[BD_NB_SENSORS][3] = {	{10.0,-12.0,-1.571},
+																{20.0,-7.0,-1.047},
+																{20.0, -3.5,-0.7854},
+																{20.0,0.0,0.0},
+																{20.0,3.5,0.7854},
+																{20.0,7.0,1.047},
+																{10.0,12.0,1.571}	};
+		// rank priority of sensors: most important sensor at first index
+		int sensor_priority[BD_NB_SENSORS] = {3,2,4,1,5,0,6};
 		
 		/*** FUNCTIONS ***/
-		std::vector<cv::Point> convertMeasurements(void);
+		cv::Point convertMeasurement(int sensor, Pose pose);
+		bool verifyMeasAge(void);
 		
 };
 

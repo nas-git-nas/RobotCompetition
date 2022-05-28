@@ -8,11 +8,13 @@
 #define DM_H
 
 // debugging
-//#define DEBUG_FAKE_MAP
+#define DEBUG_FAKE_MAP
+#define DEBUG_FAKE_MEAS
 #define DEBUG_WITHOUT_LPP
 
 // dm.cpp
 #define DM_VERBOSE_GPP false
+#define MAIN_VERBOSE_BD true
 
 // map.cpp
 #define MAP_VERBOSE_RAW_DATA false
@@ -33,17 +35,13 @@
 #define LPP_VERBOSE false
 
 // bd.cpp
-#define BD_VERBOSE false
+#define BD_VERBOSE true
 
 
 
 
 
-// global variables
-
-
-
-
+// structures
 struct Pose {
 	cv::Point position;
 	float heading = 0;

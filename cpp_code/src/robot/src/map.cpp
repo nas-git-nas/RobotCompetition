@@ -21,6 +21,11 @@ std::vector<int> Map::getNodePolygon(void)
 	return node_polygon;
 }
 
+cv::Mat Map::getMapThresholded(void)
+{
+	return map_thresholded;
+}
+
 void Map::saveRawData(const nav_msgs::OccupancyGrid::ConstPtr &msg)
 {
 	/*for(int i=0; i<msg->data.size(); i++) {
@@ -88,8 +93,9 @@ bool Map::preprocessData(void)
 		cv::imwrite("map_erode.jpg", m_dil);
 	}
 	
+	map_thresholded = m_thr;
 	map_dilated_robot = m_dil;
-	map_preprocessed = m_thr;
+
 
 	return true;
 }
@@ -133,10 +139,10 @@ void Map::calcPolygons(cv::Point current_position,
 	
 	if(MAP_DRAW_MAP) {
 		cv::Mat m_pol;
-		cv::cvtColor(map_preprocessed, m_pol, cv::COLOR_GRAY2BGR);
+		cv::cvtColor(map_thresholded, m_pol, cv::COLOR_GRAY2BGR);
 		cv::drawContours(m_pol, polygons, -1, cv::Scalar(0,0,255), 1);
 		cv::imwrite("m_pol.jpg", m_pol);
-		map_preprocessed = m_pol;
+		map_polygons = m_pol;
 	}
 	
 	// create flattened vector of polygons called "nodes" and vector with corresponding polygon
@@ -162,7 +168,7 @@ void Map::calcPolygons(cv::Point current_position,
 void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path)
 {
 	if(MAP_DRAW_MAP) {
-		cv::Mat m_gra = map_preprocessed;
+		cv::Mat m_gra = map_polygons;
 
 		// draw visibility graph lines
 		for(int i=0; i<graph.size(); i++) { // loop through number of graph points

@@ -13,9 +13,9 @@
 #include "dm.h"
 #include "bd.h"
 
-void BottleDetection::setUltrasound(std::array<int,7>  measurements)
+void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas)
 {
-	ultrasound_meas = measurements;
+	ultrasound_meas = meas;
 	updated_meas = ros::Time::now();
 }
 
@@ -25,41 +25,40 @@ std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map_bottle,
 {
 	std::vector<cv::Point> bottles;
 
-	// calc. time since ultrasonic measurements were updated
-	ros::Duration delta_time = ros::Time::now() - updated_meas;
-	
-	// if time is too long return empty vector
-	if(delta_time.toSec() > BD_UPDATE_TIME_LIMIT) {
-		if(BD_VERBOSE) {
-			ROS_INFO_STREAM("bd::calcBottlePosition: updating time too long");
-		}
+	if(verifyMeasAge()) {
 		return bottles;
 	}
 	
-	std::vector<cv::Point> objects = convertMeasurements();
+	
 	
 	// verify if there is an object and if the object is a bottle or an obstacle
-	for(int i=0; i<bottles.size(); i++) {
-		// opject position in robot reference frame
-		cv::Point object(objects[i].x,objects[i].y);
+	for(int i=0; i<BD_NB_SENSORS; i++) {
+		// treat first sensors with higher priority
+		int j = sensor_priority[i];
 		
-		// ultrasonic sensor did not measure anything
-		if(object.x==0 && object.y==0) {
+		// verify if ultrasonic sensor did not measure anything
+		if(ultrasound_meas[j]==0) {
+			if(BD_VERBOSE) {
+				ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
+									 << "] did not detect anzthing");
+			}
 			continue;
 		}
 		
-		// calc. object position in global reference frame
-		object.x = pose.position.x + object.x*cos(pose.heading) 
-											- object.y*sin(pose.heading);
-		object.y = pose.position.y + object.x*sin(pose.heading) 
-											+ object.y*cos(pose.heading);
+		if(BD_VERBOSE) {
+			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
+								 << "], meas = " << ultrasound_meas[j]);
+		}
+		
+		// convert distance measurement to position in global reference frame
+		cv::Point object = convertMeasurement(j, pose);
 		
 		// verify if object is on map (it is an obstacle)
 		bool object_on_map = false;
 		for(int k=0; k<2*BD_SEARCH_RANGE; k++) {
 			for( int l=0; l<2*BD_SEARCH_RANGE; l++) {
 				if(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k, 
-										 object.y-BD_SEARCH_RANGE+l) == 0) {
+										 		  object.y-BD_SEARCH_RANGE+l) == 0) {
 					object_on_map = true;
 					break;
 				}
@@ -70,20 +69,50 @@ std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map_bottle,
 		// add object to bottles vector if it is not on map
 		if(!object_on_map) {
 			bottles.push_back(object);
-		}		
+		}
+		
+		if(BD_VERBOSE) {
+			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
+								 << "] is on map = " << object_on_map);
+		}	
 	}
 	
-	// TODO: define logical order of bottles vector
+
 	return bottles;
 }
 
-std::vector<cv::Point> BottleDetection::convertMeasurements(void)
-{
-	std::array<cv::Point,7> position;
-
-	// TODO: convert ultrasonic measurements from distance to position in robot reference frame
+bool BottleDetection::verifyMeasAge(void)
+{	
+	// calc. time since ultrasonic measurements were updated
+	ros::Duration delta_time = ros::Time::now() - updated_meas;
 	
-	std::vector<cv::Point> pos2 = { cv::Point(1,1) };
+	// if time is too long return empty vector
+	if(delta_time.toSec() > BD_UPDATE_TIME_LIMIT) {
+		if(BD_VERBOSE) {
+			ROS_INFO_STREAM("bd::verifyAge: updating time too long");
+		}
+		return true;
+	}
+	
+	return false;
+}
 
-	return pos2;
+cv::Point BottleDetection::convertMeasurement(int sensor, Pose pose)
+{
+	// position of object in robot frame
+	float robot_x = dist_to_robot[sensor][0] 
+							+ cos(dist_to_robot[sensor][2])*ultrasound_meas[sensor];
+	float robot_y = dist_to_robot[sensor][1] 
+							+ sin(dist_to_robot[sensor][2])*ultrasound_meas[sensor];
+							
+	ROS_INFO_STREAM("robot_x = " << robot_x << ", robot_y = " << robot_y);
+	
+	// position of object in global frame
+	cv::Point object;
+	object.x = int(pose.position.x + cos(pose.heading)*robot_x 
+											    + sin(pose.heading)*robot_y);
+	object.y = int(pose.position.y + sin(pose.heading)*robot_x 
+												 + cos(pose.heading)*robot_y);
+
+	return object;
 }

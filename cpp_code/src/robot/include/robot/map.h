@@ -31,6 +31,7 @@ class Map
 		/*** FUNCTIONS ***/
 		std::vector<cv::Point> getNodes(void);
 		std::vector<int> getNodePolygon(void);
+		cv::Mat getMapThresholded(void);
 		void saveRawData(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 		
 		bool preprocessData(void);
@@ -46,8 +47,9 @@ class Map
 	private:
 		/*** VARIABLES ***/
 		cv::Mat map_raw = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8SC1, -2);
+		cv::Mat map_thresholded;
 		cv::Mat map_dilated_robot;
-		cv::Mat map_preprocessed;
+		cv::Mat map_polygons;
 		cv::Mat map_graph;
 		
 		std::vector<cv::Point> nodes;
