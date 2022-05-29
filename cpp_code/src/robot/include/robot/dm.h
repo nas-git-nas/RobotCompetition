@@ -8,8 +8,8 @@
 #define DM_H
 
 // debugging
-#define DEBUG_FAKE_MAP
-#define DEBUG_FAKE_MEAS
+//#define DEBUG_FAKE_MAP
+//#define DEBUG_FAKE_MEAS
 #define DEBUG_WITHOUT_LPP
 
 // dm.cpp
@@ -29,13 +29,13 @@
 #define DIJKSTRA_VERBOSE false
 
 // lpp_node.cpp
-#define LPP_NODE_VERBOSE true
+#define LPP_NODE_VERBOSE false
 
 // lpp.cpp
 #define LPP_VERBOSE false
 
 // bd.cpp
-#define BD_VERBOSE true
+#define BD_VERBOSE false
 
 
 

@@ -213,6 +213,33 @@ void windowsLog(ros::Publisher& windows_pub, Dijkstra& dijkstra)
 	windows_pub.publish(msg);
 }
 
+void testGPP(ros::ServiceClient &lpp_client, 
+			robot::LocalPathPlanner &lpp_srv, Dijkstra& dijkstra)
+{
+	if(!map.preprocessData()) {
+		ROS_ERROR("gpp::map::preprocessData");
+	}	
+	
+	cv::Point destination;
+#ifdef DEBUG_FAKE_MAP
+	pose.position.x = 480 + counter*5;
+	pose.position.y = 410;
+	destination.x = 550; //pose.position.x + 200;
+	destination.y = 200; //pose.position.y;
+#else
+	static bool destination_set = false;
+	if(!destination_set) {
+  		destination.x = pose.position.x+20;
+  		destination.y = pose.position.y;
+  		destination_set = true;
+  	}
+#endif
+
+	gpp(lpp_client, lpp_srv, dijkstra, destination);
+	
+}
+
+
 void testMainBottleDetection(void)
 {
 #ifdef DEBUG_FAKE_MAP
@@ -275,9 +302,9 @@ int main(int argc, char **argv)
 	ros::Duration(3, 0).sleep();
 	ROS_INFO_STREAM("main: start\n");
 	
-	bool destination_set = false;
+	
 	bool hector_slam = true;
-	cv::Point destination;
+	
 
 	int counter = 0;
 	while(ros::ok()) {
@@ -287,8 +314,9 @@ int main(int argc, char **argv)
   		ROS_INFO_STREAM("main::counter: " << counter << "\n");
   		
   		
-  		testMainBottleDetection();
-  		
+  		//testMainBottleDetection();
+  		testGPP(lpp_client, lpp_srv, dijkstra);
+  		windowsLog(windows_pub, dijkstra);
   		
   		counter++;	
   		
