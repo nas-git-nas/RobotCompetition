@@ -15,8 +15,14 @@
 #define BD_UPDATE_TIME_LIMIT 2 // in s, ultrasonic measurement should not be older than this limit
 #define BD_SEARCH_RANGE 4
 #define BD_NB_SENSORS 7
+#define BD_BOTTLE_THR 5 // in cm, maximal distance at which two measurements are considered to be
+								// the same bottle
 
-
+// structures
+struct Bottle {
+	cv::Point position;
+	int nb_meas = 0;		// number of times the position was confirmed
+};
 
 // class containing map
 class BottleDetection
@@ -34,15 +40,16 @@ class BottleDetection
 		/*** VARIABLES ***/
 		std::array<int,BD_NB_SENSORS> ultrasound_meas;
 		ros::Time updated_meas;
+		std::vector<Bottle> recorded_bottles;
 		
 		// pose of sensor with respect to robot: {x,y,angle}
-		float dist_to_robot[BD_NB_SENSORS][3] = {	{10.0,-12.0,-1.571},
-																{20.0,-7.0,-1.047},
-																{20.0, -3.5,-0.7854},
-																{20.0,0.0,0.0},
-																{20.0,3.5,0.7854},
-																{20.0,7.0,1.047},
-																{10.0,12.0,1.571}	};
+		float dist_to_robot[BD_NB_SENSORS][3] = {	{0.0,0.0,0.0},
+																{23.5,7.8,0.0},
+																{23.5, 0,0.0},
+																{23.5,-7.8,0.0},
+																{0.0,0.0,0.0},
+																{0.0,0.0,0.0},
+																{0.0,0.0,0.0}	};
 		// rank priority of sensors: most important sensor at first index
 		int sensor_priority[BD_NB_SENSORS] = {3,2,4,1,5,0,6};
 		

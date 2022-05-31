@@ -4,7 +4,7 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Empty.h"
 #include "std_msgs/Float32MultiArray.h"
-#include "std_msgs/Int32MultiArray.h"
+#include "std_msgs/Int16MultiArray.h"
 #include "std_msgs/Float32.h"
 #include "std_srvs/SetBool.h"
 #include "nav_msgs/OccupancyGrid.h"
@@ -85,12 +85,19 @@ void poseCovarianceCB(const
 						 << std::floor(msg->pose.covariance[35]) << ")");
 }
 
-void arduinoCB(const std_msgs::Int32MultiArray::ConstPtr& msg)
+void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 {
 	std::array<int,BD_NB_SENSORS> meas;
+	ROS_INFO_STREAM("New UM");
 	for(int i=0; i<BD_NB_SENSORS; i++) {
 		meas[i] = msg->data[i];
+		
+		ROS_INFO_STREAM("main::arduinoCB::US[" << i << "]: " << meas[i]);
 	}
+	meas[0] = 0;
+	meas[4] = 0;
+	meas[5] = 0;
+	meas[6] = 0;
 	bd.setUltrasound(meas);
 	/*ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," 
 						<< msg->data[1] << "," << msg->data[2] << "," 
@@ -222,7 +229,7 @@ void testGPP(ros::ServiceClient &lpp_client,
 	
 	cv::Point destination;
 #ifdef DEBUG_FAKE_MAP
-	pose.position.x = 480 + counter*5;
+	pose.position.x = 480;
 	pose.position.y = 410;
 	destination.x = 550; //pose.position.x + 200;
 	destination.y = 200; //pose.position.y;
@@ -243,8 +250,8 @@ void testGPP(ros::ServiceClient &lpp_client,
 void testMainBottleDetection(void)
 {
 #ifdef DEBUG_FAKE_MAP
-	pose.position.x = 480;
-	pose.position.y = 410;
+	pose.position.x = 550;
+	pose.position.y = 200;
 	pose.heading = 0;
 #endif
 
@@ -278,7 +285,7 @@ int main(int argc, char **argv)
 	ros::Subscriber sub = n.subscribe("map", 100, mapCallback);
 	ros::Subscriber sub2 = n.subscribe("slam_out_pose", 100, poseCallback);
 	ros::Subscriber sub3 = n.subscribe("poseupdate", 100, poseCovarianceCB);
-	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 10, arduinoCB);
+	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 100, arduinoCB);
 	
 	// publisher of topics
 	ros::Publisher windows_pub = 
@@ -309,14 +316,14 @@ int main(int argc, char **argv)
 	int counter = 0;
 	while(ros::ok()) {
 		
-  		ros::Duration(1).sleep();
+  		ros::Duration(0.1).sleep();
   		ros::spinOnce(); 		
-  		ROS_INFO_STREAM("main::counter: " << counter << "\n");
+  		//ROS_INFO_STREAM("main::counter: " << counter << "\n");
   		
   		
-  		//testMainBottleDetection();
-  		testGPP(lpp_client, lpp_srv, dijkstra);
-  		windowsLog(windows_pub, dijkstra);
+  		testMainBottleDetection();
+  		//testGPP(lpp_client, lpp_srv, dijkstra);
+  		//windowsLog(windows_pub, dijkstra);
   		
   		counter++;	
   		

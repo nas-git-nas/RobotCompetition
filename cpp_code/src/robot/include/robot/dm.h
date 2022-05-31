@@ -8,7 +8,7 @@
 #define DM_H
 
 // debugging
-//#define DEBUG_FAKE_MAP
+#define DEBUG_FAKE_MAP
 //#define DEBUG_FAKE_MEAS
 #define DEBUG_WITHOUT_LPP
 
