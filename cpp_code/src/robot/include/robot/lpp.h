@@ -16,6 +16,8 @@
 #ifndef LOCAL_PATH_PLANNER_H // include header file only once
 #define LOCAL_PATH_PLANNER_H
 
+#define LPP_USE_IMU_TO_UPDATE_HEADING true
+
 #define WHEEL_RADIUS 0.0505 // in m
 #define INTER_WHEEL_DISTANCE 0.306 // in m
 #define SET_POINT_DISTANCE_THRESHOLD 15 // in cm, error allowed to reach setpoint
@@ -33,14 +35,17 @@
 #define VEL_MOVE_PID_KI 0.5
 
 #define PI 3.1415927
+#define DEGREE2RAD 0.017453
+#define RAD2DEGREE 57.296
 #define M2GRID 100 // convert meters to grid (each pixel is one cm)
 
 class LPP
 {
    public:
 		/*** FUNCTIONS ***/
-		void setPoseAndSetPoints(std::vector<cv::Point> trajectory, 
-										 float new_heading);
+		void setPose(float *new_pose);
+		void setSetPoints(std::vector<cv::Point> trajectory);
+		void setIMUData(int16_t *gyro_data);
 		void stopMotors(void);
 		std::array<float,4> getMotorVelocity(void);
 		std::array<float,3> getPose(void);
@@ -55,7 +60,8 @@ class LPP
 		ros::Time time_update_pose;
 		bool destination_reached = true;
 		bool stop_robot = true;
-
+		int16_t gyro[3] = {0,0,0};
+		
 		/*** FUNCTIONS ***/
 		void updateMotorVelocity(void);
 		void updatePose(void);

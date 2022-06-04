@@ -1,0 +1,5 @@
+<launch>
+	
+	<node pkg="bb_mpu9150" type="mpu9150_node" name="mpu9150_node"/>
+	
+</launch>

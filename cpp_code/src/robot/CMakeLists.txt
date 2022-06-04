@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(robot)
 
+
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
@@ -59,9 +61,8 @@ add_message_files(
 ## Generate services in the 'srv' folder
 add_service_files(
 	FILES
-   AddTwoInts.srv
-   LocalPathPlanner.srv
-   GppGetMap.srv
+	GetPoseSRV.srv
+	SetTrajectorySRV.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -109,6 +110,7 @@ generate_messages(
 catkin_package(
 	CATKIN_DEPENDS message_runtime
    INCLUDE_DIRS include
+   INCLUDE_DIRS
    LIBRARIES $(PROJECT_NAME)
    CATKIN_DEPENDS roscpp
 #  CATKIN_DEPENDS roscpp rospy std_msgs
@@ -126,7 +128,10 @@ include_directories(
   include/robot
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-  #src/spholes
+  src/linux-mpu9150
+  src/linux-mpu9150/eMPL
+  src/linux-mpu9150/glue
+  src/linux-mpu9150/mpu9150
 )
 
 ## Declare a C++ library
@@ -221,28 +226,17 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_executable(talker src/talker.cpp)
-target_link_libraries(talker ${catkin_LIBRARIES})
-add_dependencies(talker robot_generate_messages_cpp)
 
-add_executable(listener src/listener.cpp)
-target_link_libraries(listener ${catkin_LIBRARIES})
-add_dependencies(listener robot_generate_messages_cpp)
 
-add_executable(add_two_ints_server src/add_two_ints_server.cpp)
-target_link_libraries(add_two_ints_server ${catkin_LIBRARIES})
-add_dependencies(add_two_ints_server robot_gencpp)
 
-add_executable(lpp_node src/lpp_node.cpp src/lpp.cpp)
-target_link_libraries(lpp_node ${catkin_LIBRARIES})
-add_dependencies(lpp_node robot_gencpp)
+add_executable(controller src/controller.cpp src/lpp.cpp)
+target_link_libraries(controller ${catkin_LIBRARIES})
+add_dependencies(controller robot_gencpp)
 
-add_executable(add_two_ints_client src/add_two_ints_client.cpp)
-target_link_libraries(add_two_ints_client ${catkin_LIBRARIES})
-add_dependencies(add_two_ints_client robot_gencpp)
-
-add_executable(dm src/dm.cpp src/map.cpp 
+add_executable(main src/main.cpp src/map.cpp 
 					src/visibility_graph.cpp src/dijkstra.cpp src/bd.cpp)
-target_link_libraries(dm ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
-add_dependencies(dm robot_gencpp)
+target_link_libraries(main ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(main robot_gencpp)
+
+
 

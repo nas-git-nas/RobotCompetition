@@ -4,16 +4,17 @@
 #include "map.h"
 
 
-#ifndef DM_H // include header file only once
-#define DM_H
+#ifndef MAIN_H // include header file only once
+#define MAIN_H
 
 // debugging
 #define DEBUG_FAKE_MAP
 //#define DEBUG_FAKE_MEAS
 #define DEBUG_WITHOUT_LPP
 
-// dm.cpp
-#define DM_VERBOSE_GPP false
+// main.cpp
+#define MAIN_VERBOSE false
+#define MAIN_VERBOSE_GPP false
 #define MAIN_VERBOSE_BD true
 
 // map.cpp
@@ -28,8 +29,9 @@
 // dijkstra.cpp
 #define DIJKSTRA_VERBOSE false
 
-// lpp_node.cpp
-#define LPP_NODE_VERBOSE false
+// controller.cpp
+#define CONTROLLER_VERBOSE true
+#define CONTROLLER_VERBOSE_POSE_CB false
 
 // lpp.cpp
 #define LPP_VERBOSE false
@@ -47,6 +49,6 @@ struct Pose {
 	float heading = 0;
 };
 
-#endif // DM_H
+#endif // MAIN_H
 
 

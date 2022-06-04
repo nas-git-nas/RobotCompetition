@@ -10,7 +10,7 @@
 #include <opencv2/imgproc.hpp>
 
 
-#include "dm.h"
+#include "main.h"
 #include "bd.h"
 
 void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas)
@@ -20,7 +20,7 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas)
 }
 
 
-cv::Point BottleDetection::closestBottle(cv::Mat map_bottle, Pose pose))
+cv::Point BottleDetection::closestBottle(cv::Mat map_bottle, Pose pose)
 {
 	std::vector<cv::Point> new_bottles = calcBottlePosition(map_bottle, pose);
 	
@@ -30,7 +30,7 @@ cv::Point BottleDetection::closestBottle(cv::Mat map_bottle, Pose pose))
 			// verify if two bottles are the same
 			if(calcDistance(new_bottles[i], recorded_bottles[j])<BD_BOTTLE_THR) {		
 				// set position to mean between new measurement and recorded position
-				updateRecordedBottle(new_bottles[i], recorded_bottles[j], j);		
+				updateRecordedBottle(new_bottles[i], recorded_bottles[j].position, j);		
 				bottle_recorded = true;
 				break;
 			}
@@ -48,20 +48,23 @@ cv::Point BottleDetection::closestBottle(cv::Mat map_bottle, Pose pose))
 	// merge recorded measurements if they are now closer
 	for(int i=0; i<recorded_bottles.size(); i++) {
 		for(int j=0; j<i; j++) {
-			if(calcDistance(recorded_bottles[i], recorded_bottles[j])<BD_BOTTLE_THR) {	
+			if(calcDistance(recorded_bottles[i].position, 
+								 recorded_bottles[j])<BD_BOTTLE_THR) {	
 				// update the measurement that has higher confidance and delete the other one
 				if(recorded_bottles[i].nb_meas<recorded_bottles[j].nb_meas) {
-					updateRecordedBottle(recorded_bottles[i], recorded_bottles[j], j);
+					updateRecordedBottle(recorded_bottles[i].position, 
+												recorded_bottles[j].position, j);
 					recorded_bottles.erase(recorded_bottles.begin()+i);
 				} else {
-					updateRecordedBottle(recorded_bottles[j], recorded_bottles[i], i);
+					updateRecordedBottle(recorded_bottles[j].position, 
+												recorded_bottles[i].position, i);
 					recorded_bottles.erase(recorded_bottles.begin()+j);		
 				}
 			}
 		}
 	}			
 				
-	
+	return new_bottles[0]; // TODO: change
 
 }
 
@@ -133,11 +136,11 @@ int BottleDetection::calcDistance(cv::Point p, Bottle b)
 	return int(sqrt(delta_x*delta_x + delta_y*delta_y));
 }
 
-void BottleDetection::updateRecordedBottle(cv::Point p1, cv::Point p2, index)
+void BottleDetection::updateRecordedBottle(cv::Point p1, cv::Point p2, int index)
 {
 	int nb_meas = recorded_bottles[index].nb_meas;
 	recorded_bottles[index].position.x = int( (p2.x*nb_meas + p1.x)/(nb_meas+1) );
-	recorded_bottles[index].position.y = int( (p2.y*nb_meas + p1.y/(nb_meas+1) );
+	recorded_bottles[index].position.y = int( (p2.y*nb_meas + p1.y)/(nb_meas+1) );
 	recorded_bottles[index].nb_meas += 1;
 }
 

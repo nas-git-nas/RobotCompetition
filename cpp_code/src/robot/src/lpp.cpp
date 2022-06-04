@@ -1,15 +1,29 @@
 
-#include "dm.h"
+#include "main.h"
 #include "lpp.h"
 
 
-void LPP::setPoseAndSetPoints(
-				std::vector<cv::Point> trajectory, float new_heading)
-{
-    pose[0] = trajectory[0].x;
-    pose[1] = trajectory[0].y;
-    pose[2] = limitAngle(new_heading);
 
+void LPP::setPose(float *new_pose)
+{
+	// update pose
+	pose[0] = new_pose[0];
+	pose[1] = new_pose[1];
+	pose[2] = limitAngle(new_pose[2]);
+
+	// update time
+	time_update_pose = ros::Time::now();
+}
+
+void LPP::setIMUData(int16_t *gyro_data)
+{
+	for(int i=0; i<3; i++) {
+		gyro[i] = gyro_data[i];
+	}
+}
+
+void LPP::setSetPoints(std::vector<cv::Point> trajectory)
+{
     //skip first point of shortest_path because it's the current 
     // robot position
     set_points.clear();
@@ -17,9 +31,6 @@ void LPP::setPoseAndSetPoints(
         set_points.push_back(trajectory[i]);
     }
     stop_robot = false;
-
-    // update time
-    time_update_pose = ros::Time::now();
 }
 
 void LPP::stopMotors(void)
@@ -129,20 +140,29 @@ void LPP::updateMotorVelocity(void)
 
 void LPP::updatePose()
 {
-    // measure time passed since last update and set current time
-    ros::Time current_time = ros::Time::now();
-    ros::Duration delta_time = current_time-time_update_pose;
-    time_update_pose = current_time;
+	// measure time passed since last update and set current time
+	ros::Time current_time = ros::Time::now();
+	ros::Duration delta_time = current_time-time_update_pose;
+	time_update_pose = current_time;
 
-    // update pose
-    float delta_pos = delta_time.toSec() * WHEEL_RADIUS * M2GRID 
-    	* (motor_vel[0]+motor_vel[1]+motor_vel[2]+motor_vel[3])/4; // in grid
-    float delta_theta = delta_time.toSec()*(motor_vel[0]+motor_vel[1]-motor_vel[2]-motor_vel[3])
-    							*WHEEL_RADIUS/(2*INTER_WHEEL_DISTANCE*VEL_TURN_ADJUSTMENT); // in rad
-    pose[0] += cos(pose[2] + delta_theta/2)*delta_pos;
-    pose[1] += sin(pose[2] + delta_theta/2)*delta_pos;
-    pose[2] += delta_theta;
-    pose[2] = limitAngle(pose[2]);
+	// calc. change in position, in grid (cm)
+	float delta_pos = delta_time.toSec() * WHEEL_RADIUS * M2GRID 
+	* (motor_vel[0]+motor_vel[1]+motor_vel[2]+motor_vel[3])/4;
+
+	// calc. change in heading, in rad
+	float delta_theta = 0;
+	if(LPP_USE_IMU_TO_UPDATE_HEADING) {
+		delta_theta = delta_time.toSec()*gyro[2]*DEGREE2RAD;
+	} else {	
+		delta_theta = delta_time.toSec()*(motor_vel[0]+motor_vel[1]-motor_vel[2]-motor_vel[3])
+							*WHEEL_RADIUS/(2*INTER_WHEEL_DISTANCE*VEL_TURN_ADJUSTMENT);
+	}
+	
+	// update pose						
+	pose[0] += cos(pose[2] + delta_theta/2)*delta_pos;
+	pose[1] += sin(pose[2] + delta_theta/2)*delta_pos;
+	pose[2] += delta_theta;
+	pose[2] = limitAngle(pose[2]);
 }
 
 void LPP::robotStop(void)

@@ -5,7 +5,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "dm.h"
+#include "main.h"
 #include "visibility_graph.h"
 
 std::vector<std::vector<int>> VisibilityGraph::getGraph(void){

@@ -1,0 +1,6 @@
+uint16 nb_nodes
+uint16[] trajectory_x
+uint16[] trajectory_y
+uint8 stop_motor
+---
+

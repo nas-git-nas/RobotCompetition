@@ -34,6 +34,7 @@ class BottleDetection
 		/*** FUNCTIONS ***/
 		void setUltrasound(std::array<int,BD_NB_SENSORS> meas);
 		std::vector<cv::Point> calcBottlePosition(cv::Mat map, Pose pose);
+		cv::Point closestBottle(cv::Mat map_bottle, Pose pose);
 
 							 
 	private:
@@ -56,6 +57,8 @@ class BottleDetection
 		/*** FUNCTIONS ***/
 		cv::Point convertMeasurement(int sensor, Pose pose);
 		bool verifyMeasAge(void);
+		int calcDistance(cv::Point p, Bottle b);
+		void updateRecordedBottle(cv::Point p1, cv::Point p2, int index);
 		
 };
 

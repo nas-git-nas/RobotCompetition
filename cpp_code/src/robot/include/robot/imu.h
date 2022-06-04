@@ -3,25 +3,37 @@
 #ifndef IMU_H
 #define IMU_H
 
-typedef struct {
-	short rawGyro[3];
-	short rawAccel[3];
-	long rawQuat[4];
-	unsigned long dmpTimestamp;
+#ifdef __cplusplus
+    extern "C" {
+#endif
+        #include "mpu9150.h"
+        #include "linux_glue.h"
+        #include "local_defaults.h"
 
-	short rawMag[3];
-	unsigned long magTimestamp;
-
-	short calibratedAccel[3];
-	short calibratedMag[3];
-
-	quaternion_t fusedQuat;
-	vector3d_t fusedEuler;
-
-	float lastDMPYaw;
-	float lastYaw;
-} mpudata_t;
+#ifdef __cplusplus
+    }
+#endif
 
 
+class IMU
+{
+	public:
+		/*** VARIABLES ***/
 
+		
+		/*** FUNCTIONS ***/
+		void initIMU(void);
+		void calcGyro(void);
+
+	private:
+		/*** VARIABLES ***/
+
+		int verbose = 0;
+		mpudata_t mpu;
+		int yaw_mix_factor = DEFAULT_YAW_MIX_FACTOR;
+		
+		/*** FUNCTIONS ***/
+		void printGyro(mpudata_t *mpu);
+
+};
 #endif
