@@ -15,7 +15,7 @@ void LPP::setPose(float *new_pose)
 	time_update_pose = ros::Time::now();
 }
 
-void LPP::setIMUData(int16_t *gyro_data)
+void LPP::setIMUData(float *gyro_data)
 {
 	for(int i=0; i<3; i++) {
 		gyro[i] = gyro_data[i];

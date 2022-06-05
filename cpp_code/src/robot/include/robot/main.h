@@ -8,14 +8,14 @@
 #define MAIN_H
 
 // debugging
-#define DEBUG_FAKE_MAP
+//#define DEBUG_FAKE_MAP
 //#define DEBUG_FAKE_MEAS
 #define DEBUG_WITHOUT_LPP
 
 // main.cpp
 #define MAIN_VERBOSE false
 #define MAIN_VERBOSE_GPP false
-#define MAIN_VERBOSE_BD true
+#define MAIN_VERBOSE_BD false
 
 // map.cpp
 #define MAP_VERBOSE_RAW_DATA false
@@ -30,8 +30,10 @@
 #define DIJKSTRA_VERBOSE false
 
 // controller.cpp
-#define CONTROLLER_VERBOSE true
+#define CONTROLLER_VERBOSE false
+#define CONTROLLER_VERBOSE_IMU false
 #define CONTROLLER_VERBOSE_POSE_CB false
+#define CONTROLLER_VERBOSE_HECTOR false
 
 // lpp.cpp
 #define LPP_VERBOSE false

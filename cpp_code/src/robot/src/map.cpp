@@ -75,8 +75,6 @@ bool Map::preprocessData(void)
 		cv::imwrite("map_threshold.jpg", m_thr);
 	}	
 	
-
-	
 #ifdef DEBUG_FAKE_MAP	
 	/* --- for testing without LIDAR --- */
 	cv::Mat m = cv::imread("maps/map15.pgm", cv::IMREAD_GRAYSCALE);	
@@ -100,7 +98,45 @@ bool Map::preprocessData(void)
 	return true;
 }
 
-void Map::calcPolygons(cv::Point current_position, 
+/*void Map::verifyNewData(cv::Mat new_map)
+{
+	ROS_INFO_STREAM("---------------------------");
+	// return if map_thresholded was not yet created
+	if(map_thresholded.empty()) {
+		return;
+	}
+
+	int nb_same_pixels = 0;
+	int nb_different_pixels = 0;
+	int nb_black_pixels = 0;
+	int nb_negative_false = 0;
+	int nb_negative_true = 0;
+	
+	for(int i=0; i<MAP_SIZE; i++) {
+		for(int j=0; j<MAP_SIZE; j++) {			
+			if(new_map.at<uint8_t>(i,j)==255 && map_thresholded.at<uint8_t>(i,j)==0) {
+				nb_negative_false += 1;
+			}
+			
+			if(new_map.at<uint8_t>(i,j)==0 && map_thresholded.at<uint8_t>(i,j)==255) {
+				nb_negative_true += 1;
+			}
+			
+			if(new_map.at<uint8_t>(i,j) == 0) {
+				nb_black_pixels += 1;
+			}
+		}
+	}
+	
+	float ratio_true = float( nb_negative_true ) / float( nb_black_pixels );
+	float ratio_false = float( nb_negative_false ) / float(nb_black_pixels );
+	
+	ROS_INFO_STREAM("Map::verifyNewData: (" << nb_negative_true+nb_negative_false << "," 							<< nb_negative_true << "," << nb_negative_false << ")");
+	ROS_INFO_STREAM("Map::verifyNewData: (" << nb_black_pixels << "," << ratio_true 
+						 << "," << ratio_false << ")");
+}*/
+
+bool Map::calcPolygons(cv::Point current_position, 
 								 cv::Point destination)
 {
 	// find contours and approximate them to get polygons
@@ -115,13 +151,27 @@ void Map::calcPolygons(cv::Point current_position,
 		cv::approxPolyDP(cv::Mat(contours[i]), polygons[i], 10, true);
 	}
 
-	// filter out small polygons	
-	int ploygon_size = polygons.size();
-	for(int i=0; i<ploygon_size; i++) {
-		if(cv::contourArea(polygons[i]) < MAP_POLYGON_MIN_SIZE) {
+	// verify area of polygons
+	int nb_ploygons = polygons.size();
+	int nb_large_polygons = 0;
+	for(int i=0; i<nb_ploygons; i++) {
+		// calc. area of polygon
+		float polygon_area = cv::contourArea(polygons[i]);
+		
+		// filter out small polygons	
+		if(polygon_area < MAP_POLYGON_MIN_SIZE) {
 			polygons.erase(polygons.begin() + i);
 			i -= 1;
-			ploygon_size -= 1;
+			nb_ploygons -= 1;
+		}
+		
+		// count nb. polygons that are too large
+		if(polygon_area > MAP_POLYGON_MAX_SIZE) {
+			nb_large_polygons += 1;
+			
+			if(nb_large_polygons > MAP_MAX_NB_LARGE_POLYGONS) {
+				return true;
+			}
 		}
 	}
 	
@@ -132,7 +182,8 @@ void Map::calcPolygons(cv::Point current_position,
 				std::cout << "(" << polygons[i][j].x << "," << polygons[i][j].y << "), ";
 			}
 			std::cout << std::endl;
-			std::cout << "polygon(" << i << ").size: " << cv::contourArea(polygons[i]) << std::endl;
+			std::cout << "polygon(" << i << ").size: " << cv::contourArea(polygons[i]) 
+						 << std::endl;
 		}
 	}
 	
@@ -162,7 +213,7 @@ void Map::calcPolygons(cv::Point current_position,
 		}
 	}	
 	
-	return;
+	return false;
 }
 
 void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path)

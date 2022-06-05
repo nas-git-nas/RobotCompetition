@@ -45,7 +45,7 @@ class LPP
 		/*** FUNCTIONS ***/
 		void setPose(float *new_pose);
 		void setSetPoints(std::vector<cv::Point> trajectory);
-		void setIMUData(int16_t *gyro_data);
+		void setIMUData(float *gyro_data);
 		void stopMotors(void);
 		std::array<float,4> getMotorVelocity(void);
 		std::array<float,3> getPose(void);
@@ -60,7 +60,7 @@ class LPP
 		ros::Time time_update_pose;
 		bool destination_reached = true;
 		bool stop_robot = true;
-		int16_t gyro[3] = {0,0,0};
+		float gyro[3] = {0,0,0};
 		
 		/*** FUNCTIONS ***/
 		void updateMotorVelocity(void);

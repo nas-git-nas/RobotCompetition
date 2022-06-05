@@ -1,0 +1,11 @@
+<launch>
+	<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
+	
+	<include file="$(find hector_slam_launch)/launch/tutorial.launch"/>
+		
+	<node pkg="bb_mpu9150" type="mpu9150_node" name="mpu9150_node"/>
+	
+	<node pkg="robot" type="controller" name="controller" 
+	output="screen"/>
+	
+</launch>

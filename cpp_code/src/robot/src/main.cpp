@@ -8,6 +8,7 @@
 #include "std_msgs/Int16MultiArray.h"
 #include "std_msgs/Float32.h"
 #include "std_srvs/SetBool.h"
+#include "std_srvs/Trigger.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
@@ -48,20 +49,6 @@ void mapCB(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 	map.saveRawData(msg);
 }
 
-
-
-void poseCovarianceCB(const 		
-						geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
-{
-	/*ROS_INFO_STREAM("Pose (x,y): (" 
-						 << std::floor(msg->pose.pose.position.x) << ",\t" 
-						 << std::floor(msg->pose.pose.position.y) << ")");*/
-	ROS_INFO_STREAM("Pose variance (x,y,theta): (" 
-						 << std::floor(msg->pose.covariance[0]) << ",\t" 
-						 << std::floor(msg->pose.covariance[7]) << ",\t" 
-						 << std::floor(msg->pose.covariance[35]) << ")");
-}
-
 void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 {
 	std::array<int,BD_NB_SENSORS> meas;
@@ -85,13 +72,13 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 /*
 * ----- MAIN FUNCTIONS -----
 */
-void mainStopMotors(ros::ServiceClient &client_set_trajectory, 
-					 robot::SetTrajectorySRV &srv_set_trajectory)
+void mainStopMotors(ros::ServiceClient &client_set_trajectory)
 	
 {
-	srv_set_trajectory.request.stop_motor = true;
+	robot::SetTrajectorySRV srv;
+	srv.request.stop_motor = true;
 
-	if(client_set_trajectory.call(srv_set_trajectory))
+	if(client_set_trajectory.call(srv))
 	{
 	 ROS_INFO_STREAM("main::mainStopMotors: stop robot");
 	}
@@ -101,35 +88,41 @@ void mainStopMotors(ros::ServiceClient &client_set_trajectory,
 	}	
 }
 
-Pose mainGetPose(ros::ServiceClient &client_get_pose, 
-					  robot::GetPoseSRV &srv_get_pose)
+Pose mainGetPose(ros::ServiceClient &client_get_pose)
 {
-	// get current pose
+	// current pose
 	Pose pose;
-
-	if(client_get_pose.call(srv_get_pose))
+	
+#ifdef DEBUG_FAKE_MAP
+	pose.position.x = 550;
+	pose.position.y = 200;
+	pose.heading = 0;
+#else
+	// call service of LPP to get current pose
+	robot::GetPoseSRV srv;
+	if(client_get_pose.call(srv))
 	{	
-		pose.position.x = srv_get_pose.response.x;
-		pose.position.y = srv_get_pose.response.y;
-		pose.heading = srv_get_pose.response.heading;
+		pose.position.x = srv.response.x;
+		pose.position.y = srv.response.y;
+		pose.heading = srv.response.heading;
 	}
 	else
 	{
-		ROS_ERROR("main::gpp: call client_get_pose failed!");
+		ROS_ERROR("main::mainGetPose: call client_get_pose failed!");
 	}
-	
+#endif
+
 	return pose;
 }
 
 void mainGPP(ros::ServiceClient &client_set_trajectory, 
-					robot::SetTrajectorySRV &srv_set_trajectory, 
-					ros::ServiceClient &client_get_pose, 
-					robot::GetPoseSRV &srv_get_pose,
+					ros::ServiceClient &client_get_pose,
+					ros::ServiceClient &client_reset_hector,
 					Dijkstra& dijkstra,
 					cv::Point destination)
 {
 	// get current pose
-	Pose pose = mainGetPose(client_get_pose, srv_get_pose);
+	Pose pose = mainGetPose(client_get_pose);
 	
 #ifdef DEBUG_FAKE_MAP
 	pose.position.x = 480;
@@ -147,7 +140,18 @@ void mainGPP(ros::ServiceClient &client_set_trajectory,
 
 	VisibilityGraph visibility_graph;
 	
-	map.calcPolygons(pose.position, destination);
+	if(map.calcPolygons(pose.position, destination)) {
+	
+		//TODO: test it
+		std_srvs::Trigger reset_map_srv;
+		if(client_reset_hector.call(reset_map_srv)) {
+			if(MAIN_VERBOSE_GPP) {
+				ROS_INFO_STREAM("main::GPP: reset hector map");
+			}
+		} else {
+			ROS_ERROR("main::GPP: reset_map_srv failed");
+		}
+	}
 	std::vector<cv::Point> nodes = map.getNodes();
 
 	
@@ -155,7 +159,7 @@ void mainGPP(ros::ServiceClient &client_set_trajectory,
   		
   	if(!dijkstra.calcPath(visibility_graph.getGraph())) {
   		ROS_ERROR("dm::gpp::dijkstra: failed to find shortest path");
-  		mainStopMotors(client_set_trajectory, srv_set_trajectory);
+  		mainStopMotors(client_set_trajectory);
   	} else {
 
 	  	std::vector<int> path = dijkstra.getShortestPath();
@@ -168,13 +172,14 @@ void mainGPP(ros::ServiceClient &client_set_trajectory,
 			trajectory_x.push_back(nodes[path[i]].x);
 			trajectory_y.push_back(nodes[path[i]].y);
 		}
-			
-		srv_set_trajectory.request.trajectory_x = trajectory_x;
-		srv_set_trajectory.request.trajectory_y = trajectory_y;
-		srv_set_trajectory.request.nb_nodes = trajectory_y.size();
-		srv_set_trajectory.request.stop_motor = 0;
 		
-		if(client_set_trajectory.call(srv_set_trajectory))
+		robot::SetTrajectorySRV srv;	
+		srv.request.trajectory_x = trajectory_x;
+		srv.request.trajectory_y = trajectory_y;
+		srv.request.nb_nodes = trajectory_y.size();
+		srv.request.stop_motor = 0;
+		
+		if(client_set_trajectory.call(srv))
 		{
 			ROS_INFO_STREAM("dm::gpp: update client_set_trajectory" << std::endl);
 		}
@@ -190,31 +195,11 @@ void mainGPP(ros::ServiceClient &client_set_trajectory,
 	//map.printMap();
 }
 
-void mainBottleDetection(ros::ServiceClient &client_get_pose, 
-								 robot::GetPoseSRV &srv_get_pose)
-{
-	// get current pose
-	Pose pose = mainGetPose(client_get_pose, srv_get_pose);
-	
-	std::vector<cv::Point> bottles = bd.calcBottlePosition(map.getMapThresholded(), 
-																			 pose);
-	
-	if(MAIN_VERBOSE_BD) {
-		ROS_INFO_STREAM("main::bd: nb. bottles detected = " << bottles.size());
-		for(int i=0; i<bottles.size(); i++) {
-			ROS_INFO_STREAM("main::bd::bottles[" << i << "] = (" << bottles[i].x << ","
-								 << bottles[i].y << ")");
-		}
-	}
-
-}
-
-void windowsLog(ros::ServiceClient &client_get_pose, 
-					 robot::GetPoseSRV &srv_get_pose,
+void windowsLog(ros::ServiceClient &client_get_pose,
 					 ros::Publisher& windows_pub, Dijkstra& dijkstra)
 {
 	// get current pose
-	Pose pose = mainGetPose(client_get_pose, srv_get_pose);
+	Pose pose = mainGetPose(client_get_pose);
 
 	std::vector<cv::Point> nodes = map.getNodes();
 	std::vector<int> polygons = map.getNodePolygon();
@@ -246,9 +231,8 @@ void windowsLog(ros::ServiceClient &client_get_pose,
 * ----- TEST FUNCTIONS -----
 */
 void testGPP(ros::ServiceClient &client_set_trajectory, 
-				 robot::SetTrajectorySRV &srv_set_trajectory, 
-				 ros::ServiceClient &client_get_pose, 
-				 robot::GetPoseSRV &srv_get_pose,
+				 ros::ServiceClient &client_get_pose,
+				 ros::ServiceClient &client_reset_hector,
 				 Dijkstra& dijkstra)
 {
 	if(!map.preprocessData()) {
@@ -256,7 +240,7 @@ void testGPP(ros::ServiceClient &client_set_trajectory,
 	}	
 
 	// get current pose
-	Pose pose = mainGetPose(client_get_pose, srv_get_pose);	
+	Pose pose = mainGetPose(client_get_pose);	
 	cv::Point destination;
 
 	static bool destination_set = false;
@@ -267,23 +251,16 @@ void testGPP(ros::ServiceClient &client_set_trajectory,
   	}
 
 
-	mainGPP(client_set_trajectory, srv_set_trajectory, 
-			  client_get_pose, srv_get_pose, dijkstra, destination);
+	mainGPP(client_set_trajectory, client_get_pose, client_reset_hector, 
+				dijkstra, destination);
 	
 }
 
 
-void testBottleDetection(ros::ServiceClient &client_get_pose, 
-								     robot::GetPoseSRV &srv_get_pose)
+void testBottleDetection(ros::ServiceClient &client_get_pose)
 {
 	// get current pose
-	Pose pose = mainGetPose(client_get_pose, srv_get_pose);
-	
-#ifdef DEBUG_FAKE_MAP
-	pose.position.x = 550;
-	pose.position.y = 200;
-	pose.heading = 0;
-#endif
+	Pose pose = mainGetPose(client_get_pose);
 
 #ifdef DEBUG_FAKE_MEAS
 	std::array<int,BD_NB_SENSORS> fake_meas = {10,0,0,10,0,0,0};
@@ -300,7 +277,12 @@ void testBottleDetection(ros::ServiceClient &client_get_pose,
 		ROS_ERROR("gpp::map::preprocessData");
 	}	
 
-	mainBottleDetection(client_get_pose, srv_get_pose);
+	cv::Point best_bottle = bd.calcBestBottle(map.getMapThresholded(), pose);
+	
+	if(MAIN_VERBOSE_BD) {
+		ROS_INFO_STREAM("main::bd: best bottle = " << best_bottle.x << "," 
+							 << best_bottle.y << ")");
+	}
 
 }
 
@@ -315,8 +297,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle n;
 
 	// subscribe to topics
-	ros::Subscriber sub = n.subscribe("map", 100, mapCB);
-	ros::Subscriber sub3 = n.subscribe("poseupdate", 100, poseCovarianceCB);
+	ros::Subscriber sub_map = n.subscribe("map", 100, mapCB);
 	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 100, arduinoCB);
 	
 	// publisher of topics
@@ -325,28 +306,22 @@ int main(int argc, char **argv)
 				
 	// create client
 	ros::ServiceClient client_get_pose = 
-	 n.serviceClient<robot::GetPoseSRV>("controller_get_pose_srv");
-	robot::GetPoseSRV srv_get_pose;
-			
+	 				n.serviceClient<robot::GetPoseSRV>("controller_get_pose_srv");			
 	ros::ServiceClient client_set_trajectory = 
-	 n.serviceClient<robot::SetTrajectorySRV>("controller_set_trajectory_srv");
-	robot::SetTrajectorySRV srv_set_trajectory;
+	 		n.serviceClient<robot::SetTrajectorySRV>("controller_set_trajectory_srv");	 
+	ros::ServiceClient client_reset_hector = 
+	 				n.serviceClient<robot::SetTrajectorySRV>("reset_map");
 	
-	ros::ServiceClient hector_client = 
-	 n.serviceClient<std_srvs::SetBool>("pause_mapping");
-	std_srvs::SetBool hector_srv;
-	
+	// classes
 	Dijkstra dijkstra;
 
 #ifndef DEBUG_WITHOUT_LPP 
-	mainStopMotors(client_set_trajectory, srv_set_trajectory);
+	mainStopMotors(client_set_trajectory);
 #endif
 
-	ros::Duration(3, 0).sleep();
-	ROS_INFO_STREAM("main: start\n");
-	
-	
-	bool hector_slam = true;
+	// wait until all nodes are initialized
+	ros::Duration(1, 0).sleep();
+	ROS_INFO_STREAM("\n\n---------- main: start ----------\n\n");
 	
 
 	int counter = 0;
@@ -360,10 +335,12 @@ int main(int argc, char **argv)
   		}
   		
   		
-  		testBottleDetection(client_get_pose, srv_get_pose);
-  		//testGPP(client_set_trajectory, srv_set_trajectory, 
-  		//			 client_get_pose, srv_get_posedijkstra);
-  		//windowsLog(client_get_pose, srv_get_pose, windows_pub, dijkstra);
+  		//testBottleDetection(client_get_pose);
+  		//testGPP(client_set_trajectory, 
+  			//		 client_get_pose, client_reset_hector, dijkstra);
+  		//windowsLog(client_get_pose, windows_pub, dijkstra);
+  		
+
   		
   		counter++;			
 	

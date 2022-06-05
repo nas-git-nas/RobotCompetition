@@ -19,65 +19,40 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas)
 	updated_meas = ros::Time::now();
 }
 
-
-cv::Point BottleDetection::closestBottle(cv::Mat map_bottle, Pose pose)
+cv::Point BottleDetection::calcBestBottle(cv::Mat map_bottle, Pose pose)
 {
-	std::vector<cv::Point> new_bottles = calcBottlePosition(map_bottle, pose);
+	// calc. position of measured bottles
+	std::vector<Bottle> new_bottles = calcNewBottles(map_bottle, pose);
 	
-	for(int i=0; i<new_bottles.size(); i++) {
-		bool bottle_recorded = false;
-		for(int j=0; j<recorded_bottles.size(); j++) {
-			// verify if two bottles are the same
-			if(calcDistance(new_bottles[i], recorded_bottles[j])<BD_BOTTLE_THR) {		
-				// set position to mean between new measurement and recorded position
-				updateRecordedBottle(new_bottles[i], recorded_bottles[j].position, j);		
-				bottle_recorded = true;
-				break;
-			}
-		}
-		
-		// add measurement to recorded bottles if it is not yet registered
-		if(!bottle_recorded) {
-			Bottle b_temp;
-			b_temp.position = new_bottles[i];
-			b_temp.nb_meas = 0;
-			recorded_bottles.push_back(b_temp);
-		}	
+	// add new bottles to recorded bottles vector and update it
+	addNewBottles(new_bottles);
+	
+	// if not bottles are recorded return nothing
+	if(recorded_bottles.empty()) {
+		cv::Point nothing;
+		nothing.x = 0;
+		nothing.y = 0;
+		return nothing;
 	}
 	
-	// merge recorded measurements if they are now closer
-	for(int i=0; i<recorded_bottles.size(); i++) {
-		for(int j=0; j<i; j++) {
-			if(calcDistance(recorded_bottles[i].position, 
-								 recorded_bottles[j])<BD_BOTTLE_THR) {	
-				// update the measurement that has higher confidance and delete the other one
-				if(recorded_bottles[i].nb_meas<recorded_bottles[j].nb_meas) {
-					updateRecordedBottle(recorded_bottles[i].position, 
-												recorded_bottles[j].position, j);
-					recorded_bottles.erase(recorded_bottles.begin()+i);
-				} else {
-					updateRecordedBottle(recorded_bottles[j].position, 
-												recorded_bottles[i].position, i);
-					recorded_bottles.erase(recorded_bottles.begin()+j);		
-				}
-			}
+	// find recorded bottle that has the most measurements and return it
+	int most_meas_index = 0;
+	for(int i=1; i<recorded_bottles.size(); i++) {
+		if(recorded_bottles[i].nb_meas > recorded_bottles[i-1].nb_meas) {
+			most_meas_index = i;
 		}
-	}			
-				
-	return new_bottles[0]; // TODO: change
-
+	}				
+	return recorded_bottles[most_meas_index].position;
 }
 
-std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map_bottle, 
-																				Pose pose)
+std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pose)
 {
-	std::vector<cv::Point> bottles;
+	std::vector<Bottle> bottles;
 
+	// if measurement is too old then return empty list
 	if(verifyMeasAge()) {
 		return bottles;
 	}
-	
-	
 	
 	// verify if there is an object and if the object is a bottle or an obstacle
 	for(int i=0; i<BD_NB_SENSORS; i++) {
@@ -116,32 +91,61 @@ std::vector<cv::Point> BottleDetection::calcBottlePosition(cv::Mat map_bottle,
 		
 		// add object to bottles vector if it is not on map
 		if(!object_on_map) {
-			bottles.push_back(object);
+			Bottle temp_bottle;
+			temp_bottle.position = object;
+			temp_bottle.nb_meas = 1;
+			bottles.push_back(temp_bottle);
 		}
 		
 		if(BD_VERBOSE) {
 			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
 								 << "] is on map = " << object_on_map);
 		}	
-	}
-	
+	}	
 
 	return bottles;
 }
 
-int BottleDetection::calcDistance(cv::Point p, Bottle b)
+void BottleDetection::addNewBottles(std::vector<Bottle> new_bottles)
 {
-	float delta_x = p.x - b.position.x;
-	float delta_y = p.y - b.position.y;
-	return int(sqrt(delta_x*delta_x + delta_y*delta_y));
-}
+	// do nothing if there are no new bottles
+	if(new_bottles.empty()) {
+		return;
+	}
 
-void BottleDetection::updateRecordedBottle(cv::Point p1, cv::Point p2, int index)
-{
-	int nb_meas = recorded_bottles[index].nb_meas;
-	recorded_bottles[index].position.x = int( (p2.x*nb_meas + p1.x)/(nb_meas+1) );
-	recorded_bottles[index].position.y = int( (p2.y*nb_meas + p1.y)/(nb_meas+1) );
-	recorded_bottles[index].nb_meas += 1;
+	// add newly measured bottles to recorded bottles
+	for(int i=0; i<new_bottles.size(); i++) {
+		bool bottle_recorded = false;
+		for(int j=0; j<recorded_bottles.size(); j++) {
+			// verify if two bottles are the same
+			if(calcDistance(new_bottles[i], recorded_bottles[j]) < BD_BOTTLE_THR) {		
+				// set position to mean between new measurement and recorded position
+				updateRecordedBottle(new_bottles[i], recorded_bottles[j]);
+				bottle_recorded = true;
+				break;
+			}
+		}
+		
+		// add measurement to recorded bottles if it is not yet registered
+		if(!bottle_recorded) {
+			recorded_bottles.push_back(new_bottles[i]);
+		}	
+	}
+	
+	// merge recorded measurements if they are close
+	int nb_bottles = recorded_bottles.size();
+	for(int i=0; i<nb_bottles; i++) {
+		for(int j=0; j<i; j++) {
+			if(calcDistance(recorded_bottles[i], recorded_bottles[j]) < BD_BOTTLE_THR) {	
+				// merge two bottles and delete one of them
+				updateRecordedBottle(recorded_bottles[i], recorded_bottles[j]);
+				recorded_bottles.erase(recorded_bottles.begin() + i);
+				i -= 1;
+				nb_bottles -= 1;
+				break;
+			}
+		}
+	}	
 }
 
 bool BottleDetection::verifyMeasAge(void)
@@ -178,4 +182,28 @@ cv::Point BottleDetection::convertMeasurement(int sensor, Pose pose)
 												 + cos(pose.heading)*robot_y);
 
 	return object;
+}
+
+int BottleDetection::calcDistance(Bottle b1, Bottle b2)
+{
+	float delta_x = b1.position.x - b2.position.x;
+	float delta_y = b1.position.y - b2.position.y;
+	return int( sqrt(delta_x*delta_x + delta_y*delta_y) );
+}
+
+void BottleDetection::updateRecordedBottle(Bottle &b1, Bottle &b2)
+{
+	// calc. weighted position	
+	int new_x = int( (b1.position.x*b1.nb_meas + b2.position.x*b2.nb_meas) 
+							/ (b1.nb_meas + b2.nb_meas) );
+	int new_y = int( (b1.position.y*b1.nb_meas + b2.position.y*b2.nb_meas) 
+							/ (b1.nb_meas + b2.nb_meas) );
+	
+	// update bottles
+	b1.position.x = new_x;
+	b1.position.y = new_y;
+	b1.nb_meas += b2.nb_meas;
+	b2.position.x = new_x;
+	b2.position.y = new_y;
+	b2.nb_meas += b1.nb_meas;	
 }

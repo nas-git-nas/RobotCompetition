@@ -1,0 +1,10 @@
+<launch>
+
+	<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
+	
+	<include file="$(find hector_slam_launch)/launch/tutorial.launch"/>
+
+	<node pkg="robot" type="main" name="main"
+	output="screen"/>
+	
+</launch>

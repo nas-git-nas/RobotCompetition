@@ -62,6 +62,7 @@ add_message_files(
 add_service_files(
 	FILES
 	GetPoseSRV.srv
+	SetPoseSRV.srv
 	SetTrajectorySRV.srv
 )
 
@@ -111,7 +112,7 @@ catkin_package(
 	CATKIN_DEPENDS message_runtime
    INCLUDE_DIRS include
    INCLUDE_DIRS
-   LIBRARIES $(PROJECT_NAME)
+   LIBRARIES ${PROJECT_NAME}				#$(PROJECT_NAME)
    CATKIN_DEPENDS roscpp
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
@@ -128,17 +129,25 @@ include_directories(
   include/robot
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
-  src/linux-mpu9150
-  src/linux-mpu9150/eMPL
-  src/linux-mpu9150/glue
-  src/linux-mpu9150/mpu9150
 )
 
 ## Declare a C++ library
 #add_library(${PROJECT_NAME}
-  #src/${PROJECT_NAME}/global_path_planner.cpp
+#  src/${PROJECT_NAME}/global_path_planner.cpp
 #  src/map.cpp
 #)
+
+
+add_executable(controller src/controller.cpp src/lpp.cpp)
+target_link_libraries(controller ${catkin_LIBRARIES})
+add_dependencies(controller robot_gencpp 
+						${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable(main src/main.cpp src/map.cpp 
+					src/visibility_graph.cpp src/dijkstra.cpp src/bd.cpp)
+target_link_libraries(main ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(main robot_gencpp
+						${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -184,9 +193,9 @@ include_directories(
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-# install(TARGETS ${PROJECT_NAME}_node
+#install(TARGETS main controller 			#${PROJECT_NAME}_node
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+#)
 
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
@@ -202,15 +211,15 @@ include_directories(
 #	DIRECTORY include/${PROJECT_NAME}/
 #   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 #   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-#)
+#   PATTERN ".svn" EXCLUDE3
+#   )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
+#install(FILES
+   # myfile1
+   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+#)
 
 #############
 ## Testing ##
@@ -229,14 +238,7 @@ include_directories(
 
 
 
-add_executable(controller src/controller.cpp src/lpp.cpp)
-target_link_libraries(controller ${catkin_LIBRARIES})
-add_dependencies(controller robot_gencpp)
 
-add_executable(main src/main.cpp src/map.cpp 
-					src/visibility_graph.cpp src/dijkstra.cpp src/bd.cpp)
-target_link_libraries(main ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
-add_dependencies(main robot_gencpp)
 
 
 

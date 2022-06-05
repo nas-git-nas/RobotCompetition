@@ -12,16 +12,17 @@
 #ifndef BD_H // include header file only once
 #define BD_H
 
-#define BD_UPDATE_TIME_LIMIT 2 // in s, ultrasonic measurement should not be older than this limit
-#define BD_SEARCH_RANGE 4
 #define BD_NB_SENSORS 7
-#define BD_BOTTLE_THR 5 // in cm, maximal distance at which two measurements are considered to be
-								// the same bottle
+#define BD_UPDATE_TIME_LIMIT 2 // in s, ultrasonic measurement must be younger
+#define BD_SEARCH_RANGE 4 // search in this environment for obstacles
+								  // [x/y - BD_SEARCH_RANGE, x/y + BD_SEARCH_RANGE]
+#define BD_BOTTLE_THR 5 // in cm, maximal distance at which two measurements are
+								// considered to be the same bottle
 
 // structures
 struct Bottle {
 	cv::Point position;
-	int nb_meas = 0;		// number of times the position was confirmed
+	int nb_meas = 0;		// number of times the position was measured
 };
 
 // class containing map
@@ -33,8 +34,7 @@ class BottleDetection
 		
 		/*** FUNCTIONS ***/
 		void setUltrasound(std::array<int,BD_NB_SENSORS> meas);
-		std::vector<cv::Point> calcBottlePosition(cv::Mat map, Pose pose);
-		cv::Point closestBottle(cv::Mat map_bottle, Pose pose);
+		cv::Point calcBestBottle(cv::Mat map_bottle, Pose pose);
 
 							 
 	private:
@@ -55,10 +55,12 @@ class BottleDetection
 		int sensor_priority[BD_NB_SENSORS] = {3,2,4,1,5,0,6};
 		
 		/*** FUNCTIONS ***/
+		std::vector<Bottle> calcNewBottles(cv::Mat map_bottle, Pose pose);
+		void addNewBottles(std::vector<Bottle> new_bottles);
 		cv::Point convertMeasurement(int sensor, Pose pose);
 		bool verifyMeasAge(void);
-		int calcDistance(cv::Point p, Bottle b);
-		void updateRecordedBottle(cv::Point p1, cv::Point p2, int index);
+		int calcDistance(Bottle b1, Bottle b2);
+		void updateRecordedBottle(Bottle &b1, Bottle &b2);
 		
 };
 
