@@ -143,7 +143,7 @@ target_link_libraries(controller ${catkin_LIBRARIES})
 add_dependencies(controller robot_gencpp 
 						${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_executable(main src/main.cpp src/map.cpp 
+add_executable(main src/main.cpp src/dm.cpp src/map.cpp 
 					src/visibility_graph.cpp src/dijkstra.cpp src/bd.cpp)
 target_link_libraries(main ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(main robot_gencpp

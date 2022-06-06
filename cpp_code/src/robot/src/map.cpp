@@ -26,6 +26,11 @@ cv::Mat Map::getMapThresholded(void)
 	return map_thresholded;
 }
 
+cv::Mat Map::getMapDilated(void)
+{
+ return map_dilated_robot;
+}
+
 void Map::saveRawData(const nav_msgs::OccupancyGrid::ConstPtr &msg)
 {
 	/*for(int i=0; i<msg->data.size(); i++) {

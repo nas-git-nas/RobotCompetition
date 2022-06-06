@@ -51,6 +51,16 @@ struct Pose {
 	float heading = 0;
 };
 
+struct Command {
+	std::vector<uint16_t> trajectory_x;
+	std::vector<uint16_t> trajectory_y;
+	int nb_nodes;
+	bool stop_motor;
+	float arm_angle;
+	float basket_angle;
+	bool air_pump;
+};
+
 #endif // MAIN_H
 
 

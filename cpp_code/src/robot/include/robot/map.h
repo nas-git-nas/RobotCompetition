@@ -37,6 +37,7 @@ class Map
 		std::vector<cv::Point> getNodes(void);
 		std::vector<int> getNodePolygon(void);
 		cv::Mat getMapThresholded(void);
+		cv::Mat getMapDilated(void);
 		void saveRawData(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 		
 		bool preprocessData(void);

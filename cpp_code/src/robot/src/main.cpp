@@ -100,14 +100,11 @@ Pose mainGetPose(ros::ServiceClient &client_get_pose)
 #else
 	// call service of LPP to get current pose
 	robot::GetPoseSRV srv;
-	if(client_get_pose.call(srv))
-	{	
+	if(client_get_pose.call(srv)) {	
 		pose.position.x = srv.response.x;
 		pose.position.y = srv.response.y;
 		pose.heading = srv.response.heading;
-	}
-	else
-	{
+	} else {
 		ROS_ERROR("main::mainGetPose: call client_get_pose failed!");
 	}
 #endif
@@ -115,7 +112,7 @@ Pose mainGetPose(ros::ServiceClient &client_get_pose)
 	return pose;
 }
 
-void mainGPP(ros::ServiceClient &client_set_trajectory, 
+/*void mainGPP(ros::ServiceClient &client_set_trajectory, 
 					ros::ServiceClient &client_get_pose,
 					ros::ServiceClient &client_reset_hector,
 					Dijkstra& dijkstra,
@@ -193,7 +190,7 @@ void mainGPP(ros::ServiceClient &client_set_trajectory,
 	  							dijkstra.getShortestPath());
 	}
 	//map.printMap();
-}
+}*/
 
 void windowsLog(ros::ServiceClient &client_get_pose,
 					 ros::Publisher& windows_pub, Dijkstra& dijkstra)
@@ -230,7 +227,7 @@ void windowsLog(ros::ServiceClient &client_get_pose,
 /*
 * ----- TEST FUNCTIONS -----
 */
-void testGPP(ros::ServiceClient &client_set_trajectory, 
+/*void testGPP(ros::ServiceClient &client_set_trajectory, 
 				 ros::ServiceClient &client_get_pose,
 				 ros::ServiceClient &client_reset_hector,
 				 Dijkstra& dijkstra)
@@ -254,7 +251,7 @@ void testGPP(ros::ServiceClient &client_set_trajectory,
 	mainGPP(client_set_trajectory, client_get_pose, client_reset_hector, 
 				dijkstra, destination);
 	
-}
+}*/
 
 
 void testBottleDetection(ros::ServiceClient &client_get_pose)
