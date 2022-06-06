@@ -175,7 +175,8 @@ bool Map::calcPolygons(cv::Point current_position,
 			nb_large_polygons += 1;
 			
 			if(nb_large_polygons > MAP_MAX_NB_LARGE_POLYGONS) {
-				return true;
+				ROS_ERROR("Map::calcPolygons: too many large obstacles");
+				//return true;
 			}
 		}
 	}

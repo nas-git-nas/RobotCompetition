@@ -1,0 +1,9 @@
+<launch>
+
+	<node pkg="robot" type="main" name="main"
+	output="screen"/>
+	
+	<node pkg="rosserial_server" type="socket_node" name="socket_node" 
+	output="screen"/>
+	
+</launch>

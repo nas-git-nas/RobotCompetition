@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "robot/GetPoseSRV.h"
 #include "robot/SetTrajectorySRV.h"
+#include "robot/CommandSRV.h"
 #include "robot/WindowsMsg.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Empty.h"
@@ -25,8 +26,20 @@
 #include "visibility_graph.h"
 #include "dijkstra.h"
 #include "bd.h"
+#include "dm.h"
 
+/*
+* ----- CALLBACK FUNCTION DEFINITIONS -----
+*/
+void mapCB(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg);
 
+/*
+* ----- Service FUNCTIONS DEFINITIONS-----
+*/
+Pose getPoseSRV(ros::ServiceClient &client_get_pose);
+void sendCommandSRV(ros::ServiceClient &client_command, Command command);
+void windowsLogSRV(ros::Publisher& windows_pub, Pose pose);
 
 
 /*
@@ -34,11 +47,78 @@
 */
 Map map;
 BottleDetection bd;
+DecisionMaker dm;
 
 
 /*
 * ----- GLOBAL VARIABLES -----
 */
+
+/*
+* ----- MAIN -----
+*/
+int main(int argc, char **argv)
+{
+	// init. ROS
+	ros::init(argc, argv, "global_path_planner");
+	ros::NodeHandle n;
+	ros::Rate loop_rate(3);
+
+	// subscribe to topics
+	ros::Subscriber sub_map = n.subscribe("map", 100, mapCB);
+	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 100, arduinoCB);
+	
+	// publisher of topics
+	ros::Publisher windows_pub = 
+					n.advertise<robot::WindowsMsg>("windows_pub", 10);
+				
+	// create client
+	ros::ServiceClient client_get_pose = 
+	 				n.serviceClient<robot::GetPoseSRV>("controller_get_pose_srv");			
+	ros::ServiceClient client_command = 
+	 		n.serviceClient<robot::CommandSRV>("controller_set_command_srv");	 
+	ros::ServiceClient client_reset_hector = 
+	 				n.serviceClient<robot::SetTrajectorySRV>("reset_map");
+	
+
+	// wait until all nodes are initialized
+	ros::Duration(1, 0).sleep();
+	ROS_INFO_STREAM("\n\n---------- main: start ----------\n\n");
+
+
+	// current pose
+	Pose pose = getPoseSRV(client_get_pose);
+	dm.init(pose);
+	
+	// define command and send init. command
+	Command command;
+	sendCommandSRV(client_command, command);	
+
+	int counter = 0;
+	while(ros::ok()) {
+		if(MAIN_VERBOSE) {		
+  			ROS_INFO_STREAM("main::counter: " << counter << "\n");
+  		}
+  		
+		// get current pose
+		pose = getPoseSRV(client_get_pose);
+		
+		// make one cycle in state machine
+  		dm.stateMachine(pose, map, bd, command);
+  		
+  		// send command to arduino
+  		//sendCommandSRV(client_command, command);
+
+		// send log to windows
+  		windowsLogSRV(windows_pub, pose);
+  		
+  		// make one ros cycle
+		ros::spinOnce();
+      loop_rate.sleep();
+		counter++;
+	}
+	return 0;
+}
 
 
 /*
@@ -58,10 +138,7 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 		
 		ROS_INFO_STREAM("main::arduinoCB::US[" << i << "]: " << meas[i]);
 	}
-	meas[0] = 0;
-	meas[4] = 0;
-	meas[5] = 0;
-	meas[6] = 0;
+
 	bd.setUltrasound(meas);
 	/*ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," 
 						<< msg->data[1] << "," << msg->data[2] << "," 
@@ -70,9 +147,83 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 
 
 /*
+* ----- Service FUNCTIONS -----
+*/
+Pose getPoseSRV(ros::ServiceClient &client_get_pose)
+{
+	// current pose
+	Pose pose;
+#ifdef DEBUG_FAKE_MAP
+	pose.position.x = 480; //550;
+	pose.position.y = 410; //200;
+	pose.heading = 0;
+#else
+	// call service of LPP to get current pose
+	robot::GetPoseSRV srv;
+	if(client_get_pose.call(srv)) {	
+		pose.position.x = srv.response.x;
+		pose.position.y = srv.response.y;
+		pose.heading = srv.response.heading;
+	} else {
+		ROS_ERROR("main::mainGetPose: call client_get_pose failed!");
+	}
+#endif
+
+	return pose;
+}
+
+void sendCommandSRV(ros::ServiceClient &client_command, Command command)	
+{
+	robot::CommandSRV srv;	
+	if(!command.stop_motor) {
+		srv.request.trajectory_x = command.trajectory_x;
+		srv.request.trajectory_y = command.trajectory_y;
+		srv.request.nb_nodes = command.nb_nodes;
+	}
+	srv.request.stop_motor = command.stop_motor;
+	srv.request.arm_angle = command.arm_angle;
+	srv.request.basket_angle = command.basket_angle;
+	srv.request.air_pump = command.air_pump;
+
+	if(!client_command.call(srv)) {
+		ROS_ERROR("main::sendCommandSRV: Failed to call service!");
+	}	
+}
+
+void windowsLogSRV(ros::Publisher& windows_pub, Pose pose)
+{
+
+
+	std::vector<cv::Point> nodes = map.getNodes();
+	std::vector<int> polygons = map.getNodePolygon();
+	std::vector<int> path = dm.getShortestPath();
+	
+	robot::WindowsMsg msg;
+
+	msg.nb_nodes = nodes.size();	
+	for(int i=0; i<nodes.size(); i++) {
+
+		msg.polygons.push_back(polygons[i]);
+		msg.nodes_x.push_back(nodes[i].x);
+		msg.nodes_y.push_back(nodes[i].y);
+	}
+
+	msg.nb_path_nodes = path.size();
+	for(int i=0; i<path.size(); i++) {
+		msg.path.push_back(path[i]);
+	}
+	
+	msg.heading = pose.heading;
+
+	windows_pub.publish(msg);
+}
+
+
+
+/*
 * ----- MAIN FUNCTIONS -----
 */
-void mainStopMotors(ros::ServiceClient &client_set_trajectory)
+/*void mainStopMotors(ros::ServiceClient &client_set_trajectory)
 	
 {
 	robot::SetTrajectorySRV srv;
@@ -112,7 +263,7 @@ Pose mainGetPose(ros::ServiceClient &client_get_pose)
 	return pose;
 }
 
-/*void mainGPP(ros::ServiceClient &client_set_trajectory, 
+void mainGPP(ros::ServiceClient &client_set_trajectory, 
 					ros::ServiceClient &client_get_pose,
 					ros::ServiceClient &client_reset_hector,
 					Dijkstra& dijkstra,
@@ -192,37 +343,6 @@ Pose mainGetPose(ros::ServiceClient &client_get_pose)
 	//map.printMap();
 }*/
 
-void windowsLog(ros::ServiceClient &client_get_pose,
-					 ros::Publisher& windows_pub, Dijkstra& dijkstra)
-{
-	// get current pose
-	Pose pose = mainGetPose(client_get_pose);
-
-	std::vector<cv::Point> nodes = map.getNodes();
-	std::vector<int> polygons = map.getNodePolygon();
-	std::vector<int> path = dijkstra.getShortestPath();
-	
-	robot::WindowsMsg msg;
-
-	msg.nb_nodes = nodes.size();	
-	for(int i=0; i<nodes.size(); i++) {
-
-		msg.polygons.push_back(polygons[i]);
-		msg.nodes_x.push_back(nodes[i].x);
-		msg.nodes_y.push_back(nodes[i].y);
-	}
-
-	msg.nb_path_nodes = path.size();
-	for(int i=0; i<path.size(); i++) {
-		msg.path.push_back(path[i]);
-	}
-	
-	msg.heading = pose.heading;
-
-	windows_pub.publish(msg);
-}
-
-
 
 /*
 * ----- TEST FUNCTIONS -----
@@ -251,7 +371,7 @@ void windowsLog(ros::ServiceClient &client_get_pose,
 	mainGPP(client_set_trajectory, client_get_pose, client_reset_hector, 
 				dijkstra, destination);
 	
-}*/
+}
 
 
 void testBottleDetection(ros::ServiceClient &client_get_pose)
@@ -281,67 +401,4 @@ void testBottleDetection(ros::ServiceClient &client_get_pose)
 							 << best_bottle.y << ")");
 	}
 
-}
-
-
-/*
-* ----- MAIN -----
-*/
-int main(int argc, char **argv)
-{
-	// init. ROS
-	ros::init(argc, argv, "global_path_planner");
-	ros::NodeHandle n;
-
-	// subscribe to topics
-	ros::Subscriber sub_map = n.subscribe("map", 100, mapCB);
-	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 100, arduinoCB);
-	
-	// publisher of topics
-	ros::Publisher windows_pub = 
-					n.advertise<robot::WindowsMsg>("windows_pub", 10);
-				
-	// create client
-	ros::ServiceClient client_get_pose = 
-	 				n.serviceClient<robot::GetPoseSRV>("controller_get_pose_srv");			
-	ros::ServiceClient client_set_trajectory = 
-	 		n.serviceClient<robot::SetTrajectorySRV>("controller_set_trajectory_srv");	 
-	ros::ServiceClient client_reset_hector = 
-	 				n.serviceClient<robot::SetTrajectorySRV>("reset_map");
-	
-	// classes
-	Dijkstra dijkstra;
-
-#ifndef DEBUG_WITHOUT_LPP 
-	mainStopMotors(client_set_trajectory);
-#endif
-
-	// wait until all nodes are initialized
-	ros::Duration(1, 0).sleep();
-	ROS_INFO_STREAM("\n\n---------- main: start ----------\n\n");
-	
-
-	int counter = 0;
-	while(ros::ok()) {
-		
-  		ros::Duration(0.1).sleep();
-  		ros::spinOnce();
-
-		if(MAIN_VERBOSE) {		
-  			ROS_INFO_STREAM("main::counter: " << counter << "\n");
-  		}
-  		
-  		
-  		//testBottleDetection(client_get_pose);
-  		//testGPP(client_set_trajectory, 
-  			//		 client_get_pose, client_reset_hector, dijkstra);
-  		//windowsLog(client_get_pose, windows_pub, dijkstra);
-  		
-
-  		
-  		counter++;			
-	
-
-	}
-	return 0;
-}
+}*/

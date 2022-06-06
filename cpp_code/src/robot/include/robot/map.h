@@ -17,11 +17,11 @@
 
 #define MAP_BRICK_LENGTH 30 // cm
 #define MAP_BRICK_WIDTH 15 // cm
-#define MAP_DILATION_KERNEL 50 // cm, dilation/expansion of obstacles
+#define MAP_DILATION_KERNEL 25 // cm, dilation/expansion of obstacles
 #define MAP_POLYGON_MIN_SIZE 200 // cm, min. size of polygon to be not ignored
 #define MAP_POLYGON_MAX_SIZE ((2*MAP_DILATION_KERNEL+MAP_BRICK_LENGTH) \
 										*(2*MAP_DILATION_KERNEL+MAP_BRICK_WIDTH))
-#define MAP_MAX_NB_LARGE_POLYGONS 2
+#define MAP_MAX_NB_LARGE_POLYGONS 3
 
 
 

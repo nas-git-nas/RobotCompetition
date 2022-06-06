@@ -9,6 +9,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "main.h"
+
 #ifndef BD_H // include header file only once
 #define BD_H
 

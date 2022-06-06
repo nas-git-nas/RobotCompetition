@@ -34,7 +34,6 @@
 #define VEL_MOVE_PID_KP 1.0
 #define VEL_MOVE_PID_KI 0.5
 
-#define PI 3.1415927
 #define DEGREE2RAD 0.017453
 #define RAD2DEGREE 57.296
 #define M2GRID 100 // convert meters to grid (each pixel is one cm)

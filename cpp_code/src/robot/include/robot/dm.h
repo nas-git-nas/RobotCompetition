@@ -9,6 +9,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "main.h"
 #include "bd.h"
 #include "map.h"
 #include "visibility_graph.h"
@@ -25,13 +26,11 @@
 #define DM_STATE_RETURN		4
 #define DM_STATE_EMPTY		5
 
-#define DM_COMMAND_ARM_REST 0
-#define DM_COMMAND_BASKET_REST 0
 
 #define DM_SP_REACHED_THR 10 //cm, should be higher than DM_SP_CHANGE
 #define DM_SP_CHANGE 5 //cm, how much set point should be moved towards robot if it is not reachable
 
-#define PI 3.1415
+
 
 
 // class containing map
@@ -42,8 +41,9 @@ class DecisionMaker
 		
 		
 		/*** FUNCTIONS ***/
+		std::vector<int> getShortestPath(void);
 		void init(Pose pose);
-		void stateMachine(Pose pose, Map &map, Command &command, BottleDetection &bd);
+		void stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command);
 
 							 
 	private:
@@ -53,6 +53,7 @@ class DecisionMaker
 		uint8_t r_idx = 0; // round index
 		uint8_t sp_idx = 0; // round index
 		
+		/*** CLASSES ***/
 		VisibilityGraph visibility_graph;
 		Dijkstra dijkstra;
 
@@ -60,7 +61,7 @@ class DecisionMaker
 		/*** FUNCTIONS ***/
 		void explore(Pose pose, Map &map, Command &command);
 		bool updateSPIndices(Pose pose);
-		void GPP(Pose pose, Map &map, cv::Point sp, Command &command);
+		void GPP(Pose pose, Map &map, Command &command);
 		int calcDistance(cv::Point p1, cv::Point p2);
 		float limitAngle(float angle);
 

@@ -64,6 +64,7 @@ add_service_files(
 	GetPoseSRV.srv
 	SetPoseSRV.srv
 	SetTrajectorySRV.srv
+	CommandSRV.srv
 )
 
 ## Generate actions in the 'action' folder

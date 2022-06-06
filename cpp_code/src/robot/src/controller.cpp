@@ -2,6 +2,7 @@
 #include "robot/GetPoseSRV.h"
 #include "robot/SetPoseSRV.h"
 #include "robot/SetTrajectorySRV.h"
+#include "robot/CommandSRV.h"
 #include "global_path_planner/LocalPathPlanner.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Int16MultiArray.h"
@@ -39,9 +40,76 @@ Pose pose;
 bool turn_hector_off = false;
 
 /*
+* ----- CALLBACK FUNCTION DEFINITIONS -----
+*/
+void poseCB(const geometry_msgs::PoseStamped::ConstPtr& msg);
+void imuCB(const std_msgs::Float32MultiArray::ConstPtr& msg);
+
+/*
+* ----- SERVICE FUNCTIONS -----
+*/
+bool getPoseSRV(robot::GetPoseSRV::Request &req,
+         		 robot::GetPoseSRV::Response &res);
+bool setCommandSRV(robot::CommandSRV::Request &req,
+         		 	 robot::CommandSRV::Response &res);
+void controllerCommandMotors(ros::Publisher& pub_motor_vel, bool stop_robot);
+
+
+/*
+* ----- MAIN -----
+*/
+int main(int argc, char **argv)
+{
+
+	ros::init(argc, argv, "lpp_service");
+	ros::NodeHandle n;
+	ros::Rate loop_rate(10);
+	
+	// subscribe to topics
+	ros::Subscriber sub_pose = n.subscribe("slam_out_pose", 100, poseCB);
+	ros::Subscriber sub_imu = n.subscribe("imu_euler", 100, imuCB);
+	
+	// publisher of topics
+	ros::Publisher pub_motor_vel = 
+				n.advertise<std_msgs::Float32MultiArray>("motor_vel", 10);
+				
+	// provided services
+	ros::ServiceServer srv_command = 
+			n.advertiseService("controller_command_srv", setCommandSRV);
+	ros::ServiceServer srv_pose = n.advertiseService("controller_get_pose_srv", 
+																	getPoseSRV);
+																	
+	// create client
+	ros::ServiceClient client_pause_hector = 
+	 								n.serviceClient<robot::SetPoseSRV>("pause_hector");
+
+				
+	ros::Duration(2).sleep();
+
+	int counter = 0;
+	while(ros::ok()) {
+		
+		if(CONTROLLER_VERBOSE) {
+			ROS_INFO_STREAM("\n----Controller: " << counter);
+		}
+		
+		controllerCommandMotors(pub_motor_vel, false);
+		//controllerProtectHector(client_pause_hector);
+		//testIMU();
+  		
+		ros::spinOnce();
+      loop_rate.sleep();
+		counter++;
+	}
+
+	// stopp robot
+	controllerCommandMotors(pub_motor_vel, true);
+}
+
+
+/*
 * ----- CALLBACK FUNCTIONS -----
 */
-
 void poseCB(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {	
 	float new_pose[3] = {0.0,0.0,0.0};
@@ -65,18 +133,6 @@ void poseCB(const geometry_msgs::PoseStamped::ConstPtr& msg)
 		std::cout << "dm::poseCB::pose: (" << pose.position.x << "," << pose.position.y 
 					 << "," << pose.heading << ")" << std::endl;
 	}
-}
-
-void poseCovarianceCB(const 		
-						geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
-{
-	/*ROS_INFO_STREAM("Pose (x,y): (" 
-						 << std::floor(msg->pose.pose.position.x) << ",\t" 
-						 << std::floor(msg->pose.pose.position.y) << ")");
-	ROS_INFO_STREAM("Pose variance (x,y,theta): (" 
-						 << std::floor(msg->pose.covariance[0]) << ",\t" 
-						 << std::floor(msg->pose.covariance[7]) << ",\t" 
-						 << std::floor(msg->pose.covariance[35]) << ")");*/
 }
 
 void imuCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
@@ -106,6 +162,9 @@ void imuCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
 }
 
 
+/*
+* ----- SERVICE FUNCTIONS -----
+*/
 bool getPoseSRV(robot::GetPoseSRV::Request &req,
          		 robot::GetPoseSRV::Response &res)
 {
@@ -126,8 +185,8 @@ bool getPoseSRV(robot::GetPoseSRV::Request &req,
 	return true;
 }
 
-bool setTrajectorySRV(robot::SetTrajectorySRV::Request &req,
-         		 		 robot::SetTrajectorySRV::Response &res)
+bool setCommandSRV(robot::CommandSRV::Request &req,
+         		 	 robot::CommandSRV::Response &res)
 {
 	if(req.stop_motor) {
 		lpp.stopMotors();
@@ -155,21 +214,25 @@ bool setTrajectorySRV(robot::SetTrajectorySRV::Request &req,
 	return true;
 }
 
-
-/*
-* ----- CONTROLLER FUNCTIONS -----
-*/
-
-void controllerCommandMotors(ros::Publisher& pub_motor_vel)
+void controllerCommandMotors(ros::Publisher& pub_motor_vel, bool stop_robot)
 {
 	// get and update motor velocity
 	std::array<float,4> motor_vel = lpp.getMotorVelocity();
-
-	// send motor commands to arduino
+	
+	// define command to send
 	std_msgs::Float32MultiArray msg_rasp2ard;
-	for(int i=0; i<4; i++) {
-		msg_rasp2ard.data.push_back(motor_vel[i]);
+	if(stop_robot) {
+		for(int i=0; i<4; i++) {
+			msg_rasp2ard.data.push_back(0);
+		}	
+	
+	} else {
+		for(int i=0; i<4; i++) {
+			msg_rasp2ard.data.push_back(motor_vel[i]);
+		}
 	}
+	
+	// send motor commands to arduino
 	pub_motor_vel.publish(msg_rasp2ard);
 
 	if(CONTROLLER_VERBOSE) {
@@ -179,7 +242,33 @@ void controllerCommandMotors(ros::Publisher& pub_motor_vel)
 	}	
 }
 
-void controllerProtectHector(ros::ServiceClient &client_pause_hector)
+/*
+* ----- TEST FUNCTIONS -----
+*/
+/*void testIMU(void)
+{
+	std::array<float,3> pose = {0,0,0};
+	pose = lpp.getPose();
+	
+	if(CONTROLLER_VERBOSE_IMU) {
+		ROS_INFO_STREAM("controller::testIMU::pose = (" << pose[0] << "," 
+							 <<  pose[1] << "," << pose[2]*RAD2DEGREE << ")");
+	}
+}*/
+
+/*void poseCovarianceCB(const 		
+						geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+{
+	ROS_INFO_STREAM("Pose (x,y): (" 
+						 << std::floor(msg->pose.pose.position.x) << ",\t" 
+						 << std::floor(msg->pose.pose.position.y) << ")");
+	ROS_INFO_STREAM("Pose variance (x,y,theta): (" 
+						 << std::floor(msg->pose.covariance[0]) << ",\t" 
+						 << std::floor(msg->pose.covariance[7]) << ",\t" 
+						 << std::floor(msg->pose.covariance[35]) << ")");
+}*/
+
+/*void controllerProtectHector(ros::ServiceClient &client_pause_hector)
 {
 	// variable to remember last state
 	static bool hector_last_state = turn_hector_off;
@@ -220,77 +309,7 @@ void controllerProtectHector(ros::ServiceClient &client_pause_hector)
 	{
 		ROS_ERROR("controller::controllerProtectHector: call client_pause_hector failed!");
 	}
-}
-
-
-
-/*
-* ----- TEST FUNCTIONS -----
-*/
-void testIMU(void)
-{
-	std::array<float,3> pose = {0,0,0};
-	pose = lpp.getPose();
-	
-	if(CONTROLLER_VERBOSE_IMU) {
-		ROS_INFO_STREAM("controller::testIMU::pose = (" << pose[0] << "," 
-							 <<  pose[1] << "," << pose[2]*RAD2DEGREE << ")");
-	}
-}
-
-
-/*
-* ----- MAIN -----
-*/
-int main(int argc, char **argv)
-{
-
-	ros::init(argc, argv, "lpp_service");
-	ros::NodeHandle n;
-	ros::Rate loop_rate(10);
-	
-	// subscribe to topics
-	ros::Subscriber sub_pose = n.subscribe("slam_out_pose", 100, poseCB);
-	ros::Subscriber sub_pose_cov = n.subscribe("poseupdate", 100, poseCovarianceCB);
-	ros::Subscriber sub_imu = n.subscribe("imu_euler", 100, imuCB);
-	
-	// publisher of topics
-	ros::Publisher pub_motor_vel = 
-				n.advertise<std_msgs::Float32MultiArray>("motor_vel", 10);
-				
-	// provided services
-	ros::ServiceServer srv_trajectory = 
-			n.advertiseService("controller_set_trajectory_srv", setTrajectorySRV);
-	ros::ServiceServer srv_pose = n.advertiseService("controller_get_pose_srv", 
-																	getPoseSRV);
-																	
-	// create client
-	ros::ServiceClient client_pause_hector = 
-	 								n.serviceClient<robot::SetPoseSRV>("pause_hector");
-
-				
-	ros::Duration(2).sleep();
-
-	int counter = 0;
-	while(ros::ok()) {
-		
-		if(CONTROLLER_VERBOSE) {
-			ROS_INFO_STREAM("\n----Controller: " << counter);
-		}
-		
-		//controllerCommandMotors(pub_motor_vel);
-		//controllerProtectHector(client_pause_hector);
-		//testIMU();
-  		
-		ros::spinOnce();
-      loop_rate.sleep();
-		counter++;
-	}
-
-
-	return 0;
-}
-
+}*/
 
 /*float rad2degrees(float angle)
 {

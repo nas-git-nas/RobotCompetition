@@ -8,7 +8,7 @@
 #define MAIN_H
 
 // debugging
-//#define DEBUG_FAKE_MAP
+#define DEBUG_FAKE_MAP
 //#define DEBUG_FAKE_MEAS
 #define DEBUG_WITHOUT_LPP
 
@@ -41,8 +41,11 @@
 // bd.cpp
 #define BD_VERBOSE false
 
+// dm.cpp
+#define DM_COMMAND_ARM_REST 0
+#define DM_COMMAND_BASKET_REST 0
 
-
+#define PI 3.141593
 
 
 // structures
@@ -55,10 +58,10 @@ struct Command {
 	std::vector<uint16_t> trajectory_x;
 	std::vector<uint16_t> trajectory_y;
 	int nb_nodes;
-	bool stop_motor;
+	bool stop_motor = true;
 	float arm_angle;
 	float basket_angle;
-	bool air_pump;
+	bool air_pump = false;
 };
 
 #endif // MAIN_H

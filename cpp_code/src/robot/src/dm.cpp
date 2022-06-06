@@ -16,7 +16,10 @@
 #include "map.h"
 
 
-
+std::vector<int> DecisionMaker::getShortestPath(void)
+{
+	return dijkstra.getShortestPath();
+}
 
 void DecisionMaker::init(Pose pose)
 {
@@ -25,8 +28,13 @@ void DecisionMaker::init(Pose pose)
 	sp_idx = 0;
 
 	cv::Point first_point;
+#ifdef DEBUG_FAKE_MAP
+	first_point.x = 550; //pose.position.x + 200;
+	first_point.y = 200; //pose.position.y;
+#else
 	first_point.x = pose.position.x + 100;
 	first_point.y = pose.position.y;
+#endif
 
 	std::vector<cv::Point> first_round;
 	first_round.push_back(first_point);
@@ -36,9 +44,8 @@ void DecisionMaker::init(Pose pose)
 }
 
 
-void DecisionMaker::stateMachine(Pose pose, Map &map, Command &command, BottleDetection &bd)
+void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
-
 	// turn everything off
 	command.stop_motor = true;
 	command.arm_angle = DM_COMMAND_BASKET_REST;
@@ -84,9 +91,6 @@ void DecisionMaker::explore(Pose pose, Map &map, Command &command)
 		return;
 	}
 	
-	// define current set point
-	cv::Point sp = sps[r_idx][sp_idx];
-	
 	// verify if current set point is reachable
 	cv::Mat map_dilated = map.getMapDilated();
 	while(map_dilated.at<uint8_t>(sps[r_idx][sp_idx].x, sps[r_idx][sp_idx].y) == 0) {
@@ -106,7 +110,7 @@ void DecisionMaker::explore(Pose pose, Map &map, Command &command)
 	}
 	
 	// calc. trajectory
-	GPP(pose, map, sp, command);
+	GPP(pose, map, command);
 }
 
 bool DecisionMaker::updateSPIndices(Pose pose)
@@ -129,16 +133,9 @@ bool DecisionMaker::updateSPIndices(Pose pose)
 	return false;
 }
 
-void DecisionMaker::GPP(Pose pose, Map &map, cv::Point sp, Command &command)
+void DecisionMaker::GPP(Pose pose, Map &map, Command &command)
 {
-
-	
-#ifdef DEBUG_FAKE_MAP
-	pose.position.x = 480;
-	pose.position.y = 410;
-	sp.x = 550; //pose.position.x + 200;
-	sp.y = 200; //pose.position.y;
-#endif
+	cv::Point sp = sps[r_idx][sp_idx];
 
 	if(MAIN_VERBOSE_GPP) {
 		ROS_INFO_STREAM("DecisionMaker::GPP::position: (" << pose.position.x 
@@ -146,12 +143,10 @@ void DecisionMaker::GPP(Pose pose, Map &map, cv::Point sp, Command &command)
 		ROS_INFO_STREAM("DecisionMaker::GPP::sp: (" << sp.x 
 							 << "," << sp.y << ")");
 	}
-
-	
 	
 	if(map.calcPolygons(pose.position, sp)) {
-	
-		//TODO: test it
+		ROS_ERROR("DecisionMaker::GPP: too many large obstacles");
+		//TODO: reset map
 		/*std_srvs::Trigger reset_map_srv;
 		if(client_reset_hector.call(reset_map_srv)) {
 			if(MAIN_VERBOSE_GPP) {
@@ -163,7 +158,6 @@ void DecisionMaker::GPP(Pose pose, Map &map, cv::Point sp, Command &command)
 	}
 	std::vector<cv::Point> nodes = map.getNodes();
 
-	
   	visibility_graph.calcGraph(nodes, map.getNodePolygon());
   	
   	std::vector<int> path;
@@ -182,7 +176,7 @@ void DecisionMaker::GPP(Pose pose, Map &map, cv::Point sp, Command &command)
 		command.stop_motor = false;
   	} else {
   		//TODO: reset map ???
-  		ROS_ERROR("dm::gpp::dijkstra: failed to find shortest path");
+  		ROS_ERROR("dm::gpp::dijkstra: failed to find path");
   		return;
 
 	}
