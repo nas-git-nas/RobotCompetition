@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 
 	// current pose
 	pose = getPoseSRV(client_get_pose);
-	dm.init(pose);
+	dm.init(pose, start_time);
 
 	
 	// define command and send init. command
@@ -120,12 +120,7 @@ int main(int argc, char **argv)
   		windowsLogSRV(windows_pub, pose);
   		
   		// turn off motors after a certain time
-  		ros::Duration delta_time = ros::Time::now()-start_time;
-  		if(delta_time.toSec() > 40) {
-			Command command_stop;
-			sendCommandSRV(client_command, command_stop);
-			ros::Duration(10, 0).sleep();			
-  		}
+
   		
   		// make one ros cycle
 		ros::spinOnce();
@@ -203,7 +198,7 @@ void sendCommandSRV(ros::ServiceClient &client_command, Command &command)
 {
 	if(MAIN_VERBOSE_COMMAND) {
 		ROS_INFO_STREAM("main::sendCommandSRV: " << command.stop_motor << ", " << command.nb_nodes);
-								
+		ROS_INFO_STREAM("main::sendCommandSRV: " << unsigned(command.dm_state));						
 		for(int i=0; i<command.trajectory_x.size(); i++) {
 			ROS_INFO_STREAM("trajectory[" << i << "] = (" << command.trajectory_x[i] << "," 
 									<< command.trajectory_y[i] << ")");
@@ -255,11 +250,17 @@ void windowsLogSRV(ros::Publisher& windows_pub, Pose pose)
 	windows_pub.publish(msg);
 }
 
-
-
 /*
 * ----- MAIN FUNCTIONS -----
 */
+
+
+
+
+
+
+
+
 /*void mainStopMotors(ros::ServiceClient &client_set_trajectory)
 	
 {

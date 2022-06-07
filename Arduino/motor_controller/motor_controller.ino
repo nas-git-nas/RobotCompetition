@@ -34,7 +34,7 @@
 #define MOTOR_PWM_VEL_DELTA float((MOTOR_PWM_MAX-MOTOR_PWM_MIN)/(MOTOR_VEL_MAX-MOTOR_VEL_MIN))
 #define MOTOR_PWM_ZERO_VEL float(MOTOR_PWM_MIN - (MOTOR_PWM_VEL_DELTA*MOTOR_VEL_MIN))
 
-#define SONAR_NUM     4 // Number of sensors.
+#define SONAR_NUM     7 // Number of sensors.
 #define MAX_DISTANCE 30 // Maximum distance (in cm) to ping.
 #define PING_INTERVAL 35 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
@@ -54,9 +54,9 @@ NewPing sonar[SONAR_NUM] = {     // Sensor object array.
   NewPing(32, 33, MAX_DISTANCE),
   NewPing(34, 35, MAX_DISTANCE),
   NewPing(36, 37, MAX_DISTANCE),
-  //NewPing(38, 39, MAX_DISTANCE),
-  //NewPing(40, 41, MAX_DISTANCE),
-  //NewPing(42, 43, MAX_DISTANCE)
+  NewPing(38, 39, MAX_DISTANCE),
+  NewPing(40, 41, MAX_DISTANCE),
+  NewPing(42, 43, MAX_DISTANCE)
 };
 
 

@@ -23,8 +23,7 @@
 #define DM_SP_CHANGE 5 //cm, how much set point should be moved towards robot if it is not reachable
 
 #define DM_BOTTLE_NB_MEAS_THR 3
-#define DM_BOTTLE_DIST_THR 5 // in cm
-#define DM_BOTTLE_ANGLE_THR 0.0873 // rad, equal to 5 degrees
+
 
 
 
@@ -38,8 +37,9 @@ class DecisionMaker
 		
 		/*** FUNCTIONS ***/
 		std::vector<int> getShortestPath(void);
-		void init(Pose pose);
+		void init(Pose pose, ros::Time time);
 		void stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command);
+		void resetCommand(Command &command);
 
 							 
 	private:
@@ -48,6 +48,7 @@ class DecisionMaker
 		std::vector<std::vector<cv::Point>> sps; // set points
 		uint8_t r_idx = 0; // round index
 		uint8_t sp_idx = 0; // round index
+		ros::Time start_time;
 		
 		/*** CLASSES ***/
 		VisibilityGraph visibility_graph;
@@ -55,6 +56,7 @@ class DecisionMaker
 
 		
 		/*** FUNCTIONS ***/
+		void verifyTime(void);
 		void explore(Pose pose, Map &map, BottleDetection &bd, Command &command);
 		void approach(Pose pose, Map &map, BottleDetection &bd, Command &command);
 		bool updateSPIndices(Pose pose);

@@ -22,7 +22,7 @@ std::vector<int> DecisionMaker::getShortestPath(void)
 	return dijkstra.getShortestPath();
 }
 
-void DecisionMaker::init(Pose pose)
+void DecisionMaker::init(Pose pose, ros::Time time)
 {
 
 	r_idx = 0;
@@ -33,8 +33,8 @@ void DecisionMaker::init(Pose pose)
 	first_point.x = 500; // 550; //pose.position.x + 200;
 	first_point.y = 410; //200; //pose.position.y;
 #else
-	first_point.x = pose.position.x + 100;
-	first_point.y = pose.position.y + 100;
+	first_point.x = pose.position.x + 30;
+	first_point.y = pose.position.y + 30;
 #endif
 
 	std::vector<cv::Point> first_round;
@@ -43,25 +43,21 @@ void DecisionMaker::init(Pose pose)
 	sps.push_back(first_round);
 	
 	dm_state = DM_STATE_EXPLORE;
-
+	start_time = time;
 }
 
 
 void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
-	// turn everything off
-	command.dm_state = dm_state;
-	command.trajectory_x.clear();
-	command.trajectory_y.clear();
-	command.nb_nodes = 0;
-	command.stop_motor = true;
-	command.arm_angle = DM_COMMAND_BASKET_REST;
-	command.basket_angle = DM_COMMAND_ARM_REST;
-	command.air_pump = false;
+	// verifyTime
+	verifyTime();
+
+	// reset command
+	resetCommand(command);
 
 	switch(dm_state) {
 		case DM_STATE_IDL:
-			dm_state = DM_STATE_IDL;
+			ros::Duration(10, 0).sleep();
 			break;		
 		case DM_STATE_EXPLORE:
 			explore(pose, map, bd, command);
@@ -81,17 +77,75 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 		default:
 			dm_state = DM_STATE_IDL;
 	}
-
 }
+
+void DecisionMaker::verifyTime(void)
+{
+	ros::Duration delta_time = ros::Time::now()-start_time;
+	if(delta_time.toSec() > 40) {
+		dm_state = DM_STATE_IDL;		
+	}
+}
+
+void DecisionMaker::resetCommand(Command &command)
+{
+	// set all initial commands
+	command.dm_state = dm_state;
+	command.trajectory_x.clear();
+	command.trajectory_y.clear();
+	command.nb_nodes = 0;
+	command.stop_motor = true;
+	command.arm_angle = DM_COMMAND_BASKET_REST;
+	command.basket_angle = DM_COMMAND_ARM_REST;
+	command.air_pump = false;
+	dm_state = DM_STATE_EXPLORE;
+}
+
+#define DM_PICKUP_STATE_MOVE_DOWN	0
+#define DM_PICKUP_STATE_ENGAGE		1
+#define DM_PICKUP_STATE_MOVE_UP		2
+#define DM_PICKUP_STATE_VERIFY		3
+#define DM_PICKUP_STATE_DISENGAGE	4
+#define DM_PICKUP_STATE_MOVE_FRONT	5
+
+
+/*void DecisionMaker::pickup(BottleDetection &bd, Command &command)
+{
+	static uint8_t pickup_state = DM_PICKUP_STATE_MOVE_FRONT;
+
+	switch(pickup_state) {
+		case DM_PICKUP_STATE_MOVE_DOWN:
+
+			break;		
+		case DM_PICKUP_STATE_ENGAGE:
+			
+			break;
+		case DM_PICKUP_STATE_MOVE_UP:
+			
+			break;
+		case DM_PICKUP_STATE_VERIFY:
+			
+			break;
+		case DM_PICKUP_STATE_DISENGAGE:
+			
+			break;
+		case DM_PICKUP_STATE_MOVE_FRONT:
+			
+			break;
+		default:
+			pickup_state = DM_PICKUP_STATE_MOVE_FRONT
+	}
+
+}*/
 
 void DecisionMaker::explore(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
 	// verify if bottle was detected
-	Bottle bottle = bd.getBestBottle();
+	/*Bottle bottle = bd.getBestBottle();
 	if(bottle.nb_meas >= DM_BOTTLE_NB_MEAS_THR) {
 		dm_state = DM_STATE_APPROACH;
 		return;
-	}
+	}*/
 
 	// calc. threhsolded and dilated map
 	if(!map.preprocessData()) {
@@ -134,16 +188,16 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	// calc. distance and angle between bottle and robot
 	int error_x = bottle.position.x - pose.position.x;
 	int error_y = bottle.position.y - pose.position.y;		
-	float theta = limitAngle(atan2f(error_y, error_x));
+	float theta_error = limitAngle(atan2f(error_y, error_x) - pose.heading);
 	float dist = sqrtf(error_x*error_x + error_y*error_y);
 	
 	// calc. optimal position of robot to pick up bottle
 	cv::Point opt_position;
-	opt_position.x = bottle.position.x - cos(theta)*APPROACH_ARM_LENGTH;
-	opt_position.y = bottle.position.x - sin(theta)*APPROACH_ARM_LENGTH;
+	opt_position.x = bottle.position.x - cos(theta_error)*APPROACH_ARM_LENGTH;
+	opt_position.y = bottle.position.x - sin(theta_error)*APPROACH_ARM_LENGTH;
 	
 	// verify if optimal position is reached
-	if(dist<DM_BOTTLE_DIST_THR && theta<DM_BOTTLE_ANGLE_THR) {
+	if(dist<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
 		dm_state = DM_STATE_PICKUP;
 		return;
 	}
@@ -165,7 +219,7 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	command.trajectory_x.push_back(pose.position.x);
 	command.trajectory_y.push_back(pose.position.y);
 	command.trajectory_x.push_back(opt_position.x);
-	command.trajectory_y.push_back(opt_position.x);		
+	command.trajectory_y.push_back(opt_position.y);		
 	command.stop_motor = false;
 }
 

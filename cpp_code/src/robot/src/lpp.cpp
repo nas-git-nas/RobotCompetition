@@ -48,7 +48,7 @@ void LPP::stopMotors(void)
 std::array<float,4> LPP::getMotorVelocity(void)
 {
 	// do nothing if robot is stopped
-	if(!stop_robot) {
+	if(stop_robot) {
 		return motor_vel;
 	}
 	
@@ -87,6 +87,8 @@ std::vector<cv::Point> LPP::getSetPoints(void)
 
 void LPP::updateMotorVelocity(void)
 {
+	//TODO: merge function with updateApproachVelocity
+
     static bool moving_state = false;
     static float theta_error_integration = 0;
     static ros::Time time_update_error = ros::Time::now();
@@ -179,6 +181,7 @@ void LPP::updateApproachVelocity(void)
 	// calc. relative distance from current psition to first set point
 	float error_x = set_points[0].x - pose[0];
 	float error_y = set_points[0].y - pose[1];
+	float distance = sqrtf(error_x*error_x + error_y*error_y);
 	
 	// calc. error in orientation (theta)
 	float theta_error = limitAngle(atan2f(error_y, error_x) - pose[2]);
@@ -187,7 +190,14 @@ void LPP::updateApproachVelocity(void)
 		std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error 
 					 << "), atan=" << atan2f(error_y, error_x) 
 		          <<  ", theta_error_integration: " << theta_error_integration << std::endl;
-	} 
+	}
+	
+	// verify if bottle is at optimal position
+	if(distance<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
+		stop_robot = true;
+		robotStop();
+		return;
+	}	
 
 	// verify if state should be changed: turning on spot or move to next set-point
 	if(abs(theta_error)>APPROACH_UPPER_THRESHOLD) {
@@ -198,9 +208,6 @@ void LPP::updateApproachVelocity(void)
 
 	// turn on spot or move to next set-point depending on state
 	if(moving_state) {
-		// calc. distance to bottle
-		float distance = sqrtf(error_x*error_x + error_y*error_y);
-		
 		// move straight if error is larger than arm length, otherwise backwards
 		if(distance > APPROACH_ARM_LENGTH) {
 			robotMove(theta_error, theta_error_integration);
