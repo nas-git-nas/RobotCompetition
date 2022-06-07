@@ -24,6 +24,10 @@
 #define TURNING_UPPER_THRESHOLD 0.3491 // in rad, 20°
 #define TURNING_LOWER_THRESHOLD 0.2618 // in rad, 15°
 
+#define APPROACH_UPPER_THRESHOLD 0.1745 // in rad, 10°
+#define APPROACH_LOWER_THRESHOLD 0.0873 // in rad, 5°
+#define APPROACH_ARM_LENGTH 44 // in cm
+
 #define VEL_TURN_MAX 1.0 // 3.5// in rad/s
 #define VEL_TURN_MIN 0.7 // in rad/s
 #define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
@@ -32,7 +36,7 @@
 #define VEL_MOVE_MAX 3.0 // in rad/s
 #define VEL_MOVE_BIAS 1.5 // in rad/s
 #define VEL_MOVE_PID_KP 1.0
-#define VEL_MOVE_PID_KI 0.5
+#define VEL_MOVE_PID_KI 0.0
 
 #define DEGREE2RAD 0.017453
 #define RAD2DEGREE 57.296
@@ -46,6 +50,7 @@ class LPP
 		void setSetPoints(std::vector<cv::Point> trajectory);
 		void setIMUData(float *gyro_data);
 		void stopMotors(void);
+		void set_dm_state(uint8_t new_state);
 		std::array<float,4> getMotorVelocity(void);
 		std::array<float,3> getPose(void);
 		std::vector<cv::Point> getSetPoints(void);
@@ -60,12 +65,15 @@ class LPP
 		bool destination_reached = true;
 		bool stop_robot = true;
 		float gyro[3] = {0,0,0};
+		uint8_t dm_state;
 		
 		/*** FUNCTIONS ***/
 		void updateMotorVelocity(void);
+		void updateApproachVelocity(void);
 		void updatePose(void);
 		void robotStop(void);
 		void robotMove(float theta_error, float theta_error_integration);
+		void robotMoveBack(float theta_error, float theta_error_integration);
 		void robotTurn(float theta_error);
 		float limitVelocity(float vel, float max, float min);
 		float limitAngle(float angle);

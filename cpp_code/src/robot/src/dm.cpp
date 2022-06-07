@@ -14,6 +14,7 @@
 #include "dm.h"
 #include "bd.h"
 #include "map.h"
+#include "lpp.h"
 
 
 std::vector<int> DecisionMaker::getShortestPath(void)
@@ -32,8 +33,8 @@ void DecisionMaker::init(Pose pose)
 	first_point.x = 500; // 550; //pose.position.x + 200;
 	first_point.y = 410; //200; //pose.position.y;
 #else
-	first_point.x = pose.position.x + 200;
-	first_point.y = pose.position.y;
+	first_point.x = pose.position.x + 100;
+	first_point.y = pose.position.y + 100;
 #endif
 
 	std::vector<cv::Point> first_round;
@@ -49,6 +50,7 @@ void DecisionMaker::init(Pose pose)
 void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
 	// turn everything off
+	command.dm_state = dm_state;
 	command.trajectory_x.clear();
 	command.trajectory_y.clear();
 	command.nb_nodes = 0;
@@ -62,10 +64,10 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 			dm_state = DM_STATE_IDL;
 			break;		
 		case DM_STATE_EXPLORE:
-			explore(pose, map, command);
+			explore(pose, map, bd, command);
 			break;
 		case DM_STATE_APPROACH:
-			dm_state = DM_STATE_IDL;
+			explore(pose, map, bd, command);
 			break;
 		case DM_STATE_PICKUP:
 			dm_state = DM_STATE_IDL;
@@ -82,8 +84,15 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 
 }
 
-void DecisionMaker::explore(Pose pose, Map &map, Command &command)
+void DecisionMaker::explore(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
+	// verify if bottle was detected
+	Bottle bottle = bd.getBestBottle();
+	if(bottle.nb_meas >= DM_BOTTLE_NB_MEAS_THR) {
+		dm_state = DM_STATE_APPROACH;
+		return;
+	}
+
 	// calc. threhsolded and dilated map
 	if(!map.preprocessData()) {
 		ROS_ERROR("gpp::map::preprocessData");
@@ -104,7 +113,7 @@ void DecisionMaker::explore(Pose pose, Map &map, Command &command)
 		
 		// move set point by DM_SP_CHANGE in direction of robot
 		sps[r_idx][sp_idx].x -= cos(theta)*DM_SP_CHANGE;
-		sps[r_idx][sp_idx].y -= cos(theta)*DM_SP_CHANGE;
+		sps[r_idx][sp_idx].y -= sin(theta)*DM_SP_CHANGE;
 		
 		// verify if current set point is reached and update indices if necessary
 		if(updateSPIndices(pose)) {
@@ -115,6 +124,49 @@ void DecisionMaker::explore(Pose pose, Map &map, Command &command)
 	
 	// calc. trajectory
 	GPP(pose, map, command);
+}
+
+void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &command)
+{
+	// get best bottle
+	Bottle bottle = bd.getBestBottle();
+	
+	// calc. distance and angle between bottle and robot
+	int error_x = bottle.position.x - pose.position.x;
+	int error_y = bottle.position.y - pose.position.y;		
+	float theta = limitAngle(atan2f(error_y, error_x));
+	float dist = sqrtf(error_x*error_x + error_y*error_y);
+	
+	// calc. optimal position of robot to pick up bottle
+	cv::Point opt_position;
+	opt_position.x = bottle.position.x - cos(theta)*APPROACH_ARM_LENGTH;
+	opt_position.y = bottle.position.x - sin(theta)*APPROACH_ARM_LENGTH;
+	
+	// verify if optimal position is reached
+	if(dist<DM_BOTTLE_DIST_THR && theta<DM_BOTTLE_ANGLE_THR) {
+		dm_state = DM_STATE_PICKUP;
+		return;
+	}
+	
+	// verify if optimal position is reachable
+	cv::Mat map_dilated = map.getMapDilated();
+	if(map_dilated.at<uint8_t>(opt_position.x, opt_position.y) == 0) {
+		bd.clearRecordedBottles();
+		dm_state = DM_STATE_EXPLORE;
+		
+		if(DM_VERBOSE_BD) {
+			ROS_WARN("DM::approach: opt. position is not reachable!");
+		}
+		return;
+	}
+	
+	// set optimal robot position as destination
+	command.nb_nodes = 2;
+	command.trajectory_x.push_back(pose.position.x);
+	command.trajectory_y.push_back(pose.position.y);
+	command.trajectory_x.push_back(opt_position.x);
+	command.trajectory_y.push_back(opt_position.x);		
+	command.stop_motor = false;
 }
 
 bool DecisionMaker::updateSPIndices(Pose pose)
@@ -141,7 +193,7 @@ void DecisionMaker::GPP(Pose pose, Map &map, Command &command)
 {
 	cv::Point sp = sps[r_idx][sp_idx];
 
-	if(MAIN_VERBOSE_GPP) {
+	if(DM_VERBOSE_GPP) {
 		ROS_INFO_STREAM("DecisionMaker::GPP::position: (" << pose.position.x 
 							 << "," << pose.position.y << ")");
 		ROS_INFO_STREAM("DecisionMaker::GPP::sp: (" << sp.x 
@@ -153,7 +205,7 @@ void DecisionMaker::GPP(Pose pose, Map &map, Command &command)
 		//TODO: reset map
 		/*std_srvs::Trigger reset_map_srv;
 		if(client_reset_hector.call(reset_map_srv)) {
-			if(MAIN_VERBOSE_GPP) {
+			if(DM_VERBOSE_GPP) {
 				ROS_INFO_STREAM("main::GPP: reset hector map");
 			}
 		} else {

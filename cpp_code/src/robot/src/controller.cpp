@@ -184,7 +184,9 @@ bool getPoseSRV(robot::GetPoseSRV::Request &req,
 bool setCommandSRV(robot::CommandSRV::Request &req,
          		 	 robot::CommandSRV::Response &res)
 {
-	ROS_INFO_STREAM("controller::setLPPCB: enter");
+	// set current state inside LPP
+	lpp.set_dm_state(req.dm_state);
+	
 	if(req.stop_motor) {
 		lpp.stopMotors();
 		

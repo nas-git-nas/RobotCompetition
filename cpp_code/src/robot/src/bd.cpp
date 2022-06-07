@@ -16,21 +16,46 @@
 void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat map_bottle, 
 												Pose pose)
 {
+	// verify if measurements are false
+	for(int i=0; i<BD_NB_SENSORS; i++) {
+		if(meas[i]>BD_ULTRASOUND_MAX_DISTANCE || meas[i]<0) {
+			meas[i] = 0;
+			if(BD_VERBOSE) {
+				ROS_WARN("main::arduinoCB: measurement out of range");
+			}
+		}
+	}
+
 	// calc. position of measured bottles
 	std::vector<Bottle> new_bottles = calcNewBottles(map_bottle, pose, meas);
 	
 	// add new bottles to recorded bottles vector and update it
-	addNewBottles(new_bottles);	
+	addNewBottles(new_bottles);
+	
+	//	subtract one measurement number of all bottles that were not updated this round
+	ageRecordedBottles();
+	
+	/*ROS_INFO("bd::setUltrasound: ---- measured bottles ----");
+	for(int i=0; i<meas.size(); i++) {
+		ROS_INFO_STREAM("bd::setUltrasound: m[" << i << "] = (" << meas[i] << ")");
+	}		
+	ROS_INFO("bd::setUltrasound: ---- recorded bottles ----");
+	for(int i=0; i<recorded_bottles.size(); i++) {
+		ROS_INFO_STREAM("bd::setUltrasound: b[" << i << "] = (" << recorded_bottles[i].position.x 
+								<< "," << recorded_bottles[i].position.y << ";" 
+								<< recorded_bottles[i].nb_meas << ")");		
+	}*/
 	
 }
 
-cv::Point BottleDetection::getBestBottle(void)
+Bottle BottleDetection::getBestBottle(void)
 {
-	// if not bottles are recorded return nothing
+	// if no bottles are recorded return nothing
 	if(recorded_bottles.empty()) {
-		cv::Point nothing;
-		nothing.x = 0;
-		nothing.y = 0;
+		Bottle nothing;
+		nothing.position.x = 0;
+		nothing.position.y = 0;
+		nothing.nb_meas = 0;
 		return nothing;
 	}
 	
@@ -41,7 +66,12 @@ cv::Point BottleDetection::getBestBottle(void)
 			most_meas_index = i;
 		}
 	}				
-	return recorded_bottles[most_meas_index].position;
+	return recorded_bottles[most_meas_index];
+}
+
+void BottleDetection::clearRecordedBottles(void)
+{
+	recorded_bottles.clear();
 }
 
 std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pose, 		
@@ -49,27 +79,33 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 {
 	std::vector<Bottle> bottles;
 	
+	// verify if there exists a map
+	if(map_bottle.empty()) {
+		if(BD_VERBOSE) {
+			ROS_WARN("bd::calcBottlePosition: map does not exists");
+		}
+		return bottles;
+	}
+	
 	// verify if there is an object and if the object is a bottle or an obstacle
 	for(int i=0; i<BD_NB_SENSORS; i++) {
-		// treat first sensors with higher priority
-		int j = sensor_priority[i];
 		
 		// verify if ultrasonic sensor did not measure anything
-		if(meas[j]==0) {
+		if(meas[i]==0) {
 			if(BD_VERBOSE) {
-				ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
+				ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i 
 									 << "] did not detect anzthing");
 			}
 			continue;
 		}
 		
 		if(BD_VERBOSE) {
-			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
-								 << "], meas = " << meas[j]);
+			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i 
+								 << "], meas = " << meas[i]);
 		}
 		
 		// convert distance measurement to position in global reference frame
-		cv::Point object = convertMeasurement(j, pose, meas[j]);
+		cv::Point object = convertMeasurement(i, pose, meas[i]);
 		
 		// verify if object is on map (it is an obstacle)
 		bool object_on_map = false;
@@ -89,15 +125,15 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 			Bottle temp_bottle;
 			temp_bottle.position = object;
 			temp_bottle.nb_meas = 1;
+			temp_bottle.updated = true;
 			bottles.push_back(temp_bottle);
 		}
 		
 		if(BD_VERBOSE) {
-			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
+			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i 
 								 << "] is on map = " << object_on_map);
 		}	
 	}	
-
 	return bottles;
 }
 
@@ -105,6 +141,9 @@ void BottleDetection::addNewBottles(std::vector<Bottle> new_bottles)
 {
 	// do nothing if there are no new bottles
 	if(new_bottles.empty()) {
+		if(BD_VERBOSE) {
+			ROS_INFO_STREAM("bd::addNewBottles: no new bottles -> return");
+		}
 		return;
 	}
 
@@ -124,6 +163,7 @@ void BottleDetection::addNewBottles(std::vector<Bottle> new_bottles)
 		// add measurement to recorded bottles if it is not yet registered
 		if(!bottle_recorded) {
 			recorded_bottles.push_back(new_bottles[i]);
+			ROS_INFO_STREAM("bd::addNewBottles: add new bottle");
 		}	
 	}
 	
@@ -140,34 +180,18 @@ void BottleDetection::addNewBottles(std::vector<Bottle> new_bottles)
 				break;
 			}
 		}
-	}	
-}
-
-/*bool BottleDetection::verifyMeasAge(void)
-{	
-	// calc. time since ultrasonic measurements were updated
-	ros::Duration delta_time = ros::Time::now() - updated_meas;
-	
-	// if time is too long return empty vector
-	if(delta_time.toSec() > BD_UPDATE_TIME_LIMIT) {
-		if(BD_VERBOSE) {
-			ROS_INFO_STREAM("bd::verifyAge: updating time too long");
-		}
-		return true;
 	}
-	
-	return false;
-}*/
+}
 
 cv::Point BottleDetection::convertMeasurement(int sensor, Pose pose, int measurement)
 {
+	
 	// position of object in robot frame
 	float robot_x = dist_to_robot[sensor][0] 
 							+ cos(dist_to_robot[sensor][2])*measurement;
 	float robot_y = dist_to_robot[sensor][1] 
 							+ sin(dist_to_robot[sensor][2])*measurement;
-							
-	ROS_INFO_STREAM("robot_x = " << robot_x << ", robot_y = " << robot_y);
+	
 	
 	// position of object in global frame
 	cv::Point object;
@@ -195,10 +219,58 @@ void BottleDetection::updateRecordedBottle(Bottle &b1, Bottle &b2)
 							/ (b1.nb_meas + b2.nb_meas) );
 	
 	// update bottles
+	int b1_nb_meas_temp = b1.nb_meas;
 	b1.position.x = new_x;
 	b1.position.y = new_y;
 	b1.nb_meas += b2.nb_meas;
+	if(b1.nb_meas > BD_NB_MEAS_MAX) {
+		b1.nb_meas = BD_NB_MEAS_MAX;
+	}
+	b1.updated = true;
+	
 	b2.position.x = new_x;
 	b2.position.y = new_y;
-	b2.nb_meas += b1.nb_meas;	
+	b2.nb_meas += b1_nb_meas_temp;
+	if(b2.nb_meas > BD_NB_MEAS_MAX) {
+		b2.nb_meas = BD_NB_MEAS_MAX;
+	}
+	b2.updated = true;
 }
+
+void BottleDetection::ageRecordedBottles(void)
+{
+	int nb_bottles = recorded_bottles.size();
+	for(int i=0; i<nb_bottles; i++) {
+		// verify if bottle was updated in this cycle
+		if(!recorded_bottles[i].updated) {
+			recorded_bottles[i].nb_meas -= 1;
+			
+			// erease bottle if it exists not anymore
+			if(recorded_bottles[i].nb_meas <= 0) {
+				recorded_bottles.erase(recorded_bottles.begin() + i);
+				i -= 1;
+				nb_bottles -= 1;
+				continue;		
+			}
+		}
+		
+		// reset recorded bool
+		recorded_bottles[i].updated = false;
+	}
+}
+
+/*bool BottleDetection::verifyMeasAge(void)
+{	
+	// calc. time since ultrasonic measurements were updated
+	ros::Duration delta_time = ros::Time::now() - updated_meas;
+	
+	// if time is too long return empty vector
+	if(delta_time.toSec() > BD_UPDATE_TIME_LIMIT) {
+		if(BD_VERBOSE) {
+			ROS_INFO_STREAM("bd::verifyAge: updating time too long");
+		}
+		return true;
+	}
+	
+	return false;
+}*/

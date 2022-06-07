@@ -94,6 +94,7 @@ int main(int argc, char **argv)
 	// current pose
 	pose = getPoseSRV(client_get_pose);
 	dm.init(pose);
+
 	
 	// define command and send init. command
 	Command command;
@@ -107,6 +108,7 @@ int main(int argc, char **argv)
   		
 		// get current pose
 		pose = getPoseSRV(client_get_pose);
+
 		
 		// make one cycle in state machine
   		dm.stateMachine(pose, map, bd, command);
@@ -117,7 +119,7 @@ int main(int argc, char **argv)
 		// send log to windows
   		windowsLogSRV(windows_pub, pose);
   		
-  		
+  		// turn off motors after a certain time
   		ros::Duration delta_time = ros::Time::now()-start_time;
   		if(delta_time.toSec() > 40) {
 			Command command_stop;
@@ -146,30 +148,28 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 {
 	std::array<int,BD_NB_SENSORS> meas;
 	
-	bool measured_something = false;
 	for(int i=0; i<BD_NB_SENSORS; i++) {
 		meas[i] = msg->data[i];
-		
-		if(meas[i]>BD_ULTRASOUND_MAX_DISTANCE || meas[i]<0) {
-			meas[i] = 0;
-			ROS_ERROR("main::arduinoCB: measurement out of range");
-		}
-		
-		if(meas[i] != 0) {
-			measured_something = true;
-		}
 		
 		if(MAIN_VERBOSE_BD) {
 			ROS_INFO_STREAM("main::arduinoCB::US[" << i << "]: " << meas[i]);
 		}
 	}
+	
+	// calc. threhsolded and dilated map
+	/*if(!map.preprocessData()) {
+		ROS_ERROR("gpp::map::preprocessData");
+	}	*/
 
-	if(measured_something) {
-		bd.setUltrasound(meas, map.getMapThresholded(), pose);
-	}
-	/*ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," 
-						<< msg->data[1] << "," << msg->data[2] << "," 
-						<< msg->data[3] << ")" << std::endl);*/
+	// update recorded measurements in BD if there are new ones
+	bd.setUltrasound(meas, map.getMapThresholded(), pose);
+
+	
+	/*Bottle bottle = bd.getBestBottle();
+	if(MAIN_VERBOSE_BD) {
+		ROS_INFO_STREAM("main::arduinoCB: best bottle = (" << bottle.position.x << "," 
+								<< bottle.position.y << ";" << bottle.nb_meas << ")");
+	}*/
 }
 
 
@@ -201,15 +201,17 @@ Pose getPoseSRV(ros::ServiceClient &client_get_pose)
 
 void sendCommandSRV(ros::ServiceClient &client_command, Command &command)	
 {
-
-	ROS_INFO_STREAM("main::sendCommandSRV: " << command.stop_motor << ", " << command.nb_nodes);
-							
-	for(int i=0; i<command.trajectory_x.size(); i++) {
-		ROS_INFO_STREAM("trajectory[" << i << "] = (" << command.trajectory_x[i] << "," 
-								<< command.trajectory_y[i] << ")");
+	if(MAIN_VERBOSE_COMMAND) {
+		ROS_INFO_STREAM("main::sendCommandSRV: " << command.stop_motor << ", " << command.nb_nodes);
+								
+		for(int i=0; i<command.trajectory_x.size(); i++) {
+			ROS_INFO_STREAM("trajectory[" << i << "] = (" << command.trajectory_x[i] << "," 
+									<< command.trajectory_y[i] << ")");
+		}
 	}
 
-	robot::CommandSRV srv;	
+	robot::CommandSRV srv;
+	srv.request.dm_state = command.dm_state;
 	if(!command.stop_motor) {
 		srv.request.trajectory_x = command.trajectory_x;
 		srv.request.trajectory_y = command.trajectory_y;

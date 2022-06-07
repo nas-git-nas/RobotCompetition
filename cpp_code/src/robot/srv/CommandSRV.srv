@@ -1,3 +1,4 @@
+uint8 dm_state
 uint16 nb_nodes
 uint16[] trajectory_x
 uint16[] trajectory_y

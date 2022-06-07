@@ -33,6 +33,11 @@ void LPP::setSetPoints(std::vector<cv::Point> trajectory)
     stop_robot = false;
 }
 
+void LPP::set_dm_state(uint8_t new_state)
+{
+	dm_state = new_state;
+}
+
 void LPP::stopMotors(void)
 {
 	robotStop();
@@ -42,9 +47,26 @@ void LPP::stopMotors(void)
 
 std::array<float,4> LPP::getMotorVelocity(void)
 {
+	// do nothing if robot is stopped
 	if(!stop_robot) {
-   	updateMotorVelocity();
-   }
+		return motor_vel;
+	}
+	
+	// enter different drive mode depending on decision maker state
+	switch(dm_state) {	
+		case DM_STATE_EXPLORE:
+		case DM_STATE_RETURN:
+			updateApproachVelocity();
+			//updateMotorVelocity();
+			break;
+		case DM_STATE_APPROACH:	
+			updateApproachVelocity();
+			break;
+		default:
+			robotStop();
+			stop_robot = true;
+	}
+ 
    /*ROS_INFO_STREAM("lpp::tegMotorVel::motor_vel: (" << motor_vel[0] << "," 
 	  					 			<< motor_vel[1] << "," << motor_vel[2] 
 	  					 			<< "," << motor_vel[3] << ")");
@@ -111,10 +133,12 @@ void LPP::updateMotorVelocity(void)
     } else {
         // calc. error in orientation (theta) and integrated theta
         float theta_error = limitAngle(atan2f(error_y, error_x) - pose[2]);
+        
+        // TODO: test error integration
         ros::Time current_time = ros::Time::now();
         ros::Duration delta_time_error = current_time-time_update_error;
         time_update_error = current_time;
-        theta_error_integration != delta_time_error.toSec()*theta_error;
+        theta_error_integration += delta_time_error.toSec()*theta_error;
 
         if(LPP_VERBOSE) {
             std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error 
@@ -136,6 +160,58 @@ void LPP::updateMotorVelocity(void)
             robotTurn(theta_error);
         }
     }
+}
+
+void LPP::updateApproachVelocity(void)
+{
+	if(stop_robot) {
+	  robotStop();
+	  return;
+	} 
+
+	static bool moving_state = false;
+	static float theta_error_integration = 0;
+	static ros::Time time_update_error = ros::Time::now();
+
+	// update pose
+	updatePose();
+
+	// calc. relative distance from current psition to first set point
+	float error_x = set_points[0].x - pose[0];
+	float error_y = set_points[0].y - pose[1];
+	
+	// calc. error in orientation (theta)
+	float theta_error = limitAngle(atan2f(error_y, error_x) - pose[2]);
+
+	if(LPP_VERBOSE) {
+		std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error 
+					 << "), atan=" << atan2f(error_y, error_x) 
+		          <<  ", theta_error_integration: " << theta_error_integration << std::endl;
+	} 
+
+	// verify if state should be changed: turning on spot or move to next set-point
+	if(abs(theta_error)>APPROACH_UPPER_THRESHOLD) {
+		moving_state = false;
+	} else if(abs(theta_error)<APPROACH_LOWER_THRESHOLD) {
+		moving_state = true;
+	}
+
+	// turn on spot or move to next set-point depending on state
+	if(moving_state) {
+		// calc. distance to bottle
+		float distance = sqrtf(error_x*error_x + error_y*error_y);
+		
+		// move straight if error is larger than arm length, otherwise backwards
+		if(distance > APPROACH_ARM_LENGTH) {
+			robotMove(theta_error, theta_error_integration);
+		} else {
+			robotMoveBack(theta_error, theta_error_integration);
+		}
+		
+	} else {
+		robotTurn(theta_error);
+	}
+    
 }
 
 void LPP::updatePose()
@@ -186,6 +262,21 @@ void LPP::robotMove(float theta_error, float theta_error_integration)
     motor_vel[1] = VEL_MOVE_BIAS + vel;
     motor_vel[2] = VEL_MOVE_BIAS - vel;
     motor_vel[3] = VEL_MOVE_BIAS - vel;
+
+    if(LPP_VERBOSE) {
+        std::cout << "robotMove: vel=" << vel << std::endl;
+    } 
+}
+
+void LPP::robotMoveBack(float theta_error, float theta_error_integration)
+{
+    float vel = VEL_MOVE_PID_KP*theta_error + VEL_MOVE_PID_KI*theta_error_integration;
+    vel = limitVelocity(vel, VEL_MOVE_MAX, 0);
+
+    motor_vel[0] = -VEL_MOVE_BIAS + vel;
+    motor_vel[1] = -VEL_MOVE_BIAS + vel;
+    motor_vel[2] = -VEL_MOVE_BIAS - vel;
+    motor_vel[3] = -VEL_MOVE_BIAS - vel;
 
     if(LPP_VERBOSE) {
         std::cout << "robotMove: vel=" << vel << std::endl;

@@ -23,7 +23,7 @@
 #define MAP_POLYGON_MIN_SIZE 200 // cm, min. size of polygon to be not ignored
 #define MAP_POLYGON_MAX_SIZE ((2*MAP_DILATION_KERNEL+MAP_BRICK_LENGTH) \
 										*(2*MAP_DILATION_KERNEL+MAP_BRICK_WIDTH))
-#define MAP_MAX_NB_LARGE_POLYGONS 3
+#define MAP_MAX_NB_LARGE_POLYGONS 100 //TODO: define value
 
 
 
