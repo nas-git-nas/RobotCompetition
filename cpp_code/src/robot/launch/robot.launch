@@ -4,10 +4,11 @@
 	
 	<include file="$(find hector_slam_launch)/launch/tutorial_headless.launch"/>
 	
-	<node pkg="robot" type="dm" 
-	name="dm" output="screen"/>
 	
-	<node pkg="robot" type="lpp_node" name="lpp_node" 
+	<node pkg="robot" type="main" 
+	name="main" output="screen"/>
+	
+	<node pkg="robot" type="controller" name="controller" 
 	output="screen"/>
 	
 	<node pkg="rosserial_server" type="socket_node" name="socket_node" 

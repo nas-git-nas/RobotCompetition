@@ -17,12 +17,8 @@
 #include "lpp.h"
 
 
-#define MAP_SIZE_M 5
-#define MAP_RESOLUTION 0.01
-#define MAP_START_X 0.5
-#define MAP_START_Y 0.5
-#define MAP_OFFSET_X int(MAP_SIZE_M*MAP_START_X/MAP_RESOLUTION)
-#define MAP_OFFSET_Y int(MAP_SIZE_M*MAP_START_Y/MAP_RESOLUTION)
+#define MAP_OFFSET_X int(MAP_SIZE*MAP_START_X)
+#define MAP_OFFSET_Y int(MAP_SIZE*MAP_START_Y)
 #define MAP_M2PIXEL float(1/MAP_RESOLUTION)
 //TODO: verify
 #define ROBOT_CENTER_OFFSET 15
@@ -188,6 +184,7 @@ bool getPoseSRV(robot::GetPoseSRV::Request &req,
 bool setCommandSRV(robot::CommandSRV::Request &req,
          		 	 robot::CommandSRV::Response &res)
 {
+	ROS_INFO_STREAM("controller::setLPPCB: enter");
 	if(req.stop_motor) {
 		lpp.stopMotors();
 		

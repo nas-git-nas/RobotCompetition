@@ -9,15 +9,17 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "main.h"
+
 #ifndef MAP_H // include header file only once
 #define MAP_H
 
-#define MAP_SIZE	500 // map size in pixels
+
 #define PIXEL_THRESHOLD 60 // pixel oppucancy certainty: [0,100]
 
 #define MAP_BRICK_LENGTH 30 // cm
 #define MAP_BRICK_WIDTH 15 // cm
-#define MAP_DILATION_KERNEL 25 // cm, dilation/expansion of obstacles
+#define MAP_DILATION_KERNEL 50 // cm, dilation/expansion of obstacles
 #define MAP_POLYGON_MIN_SIZE 200 // cm, min. size of polygon to be not ignored
 #define MAP_POLYGON_MAX_SIZE ((2*MAP_DILATION_KERNEL+MAP_BRICK_LENGTH) \
 										*(2*MAP_DILATION_KERNEL+MAP_BRICK_WIDTH))

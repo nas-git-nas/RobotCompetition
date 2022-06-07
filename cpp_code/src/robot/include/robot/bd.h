@@ -35,14 +35,12 @@ class BottleDetection
 
 		
 		/*** FUNCTIONS ***/
-		void setUltrasound(std::array<int,BD_NB_SENSORS> meas);
-		cv::Point calcBestBottle(cv::Mat map_bottle, Pose pose);
+		void setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat map_bottle, Pose pose);
+		cv::Point getBestBottle(void);
 
 							 
 	private:
 		/*** VARIABLES ***/
-		std::array<int,BD_NB_SENSORS> ultrasound_meas;
-		ros::Time updated_meas;
 		std::vector<Bottle> recorded_bottles;
 		
 		// pose of sensor with respect to robot: {x,y,angle}
@@ -57,9 +55,10 @@ class BottleDetection
 		int sensor_priority[BD_NB_SENSORS] = {3,2,4,1,5,0,6};
 		
 		/*** FUNCTIONS ***/
-		std::vector<Bottle> calcNewBottles(cv::Mat map_bottle, Pose pose);
+		std::vector<Bottle> calcNewBottles(cv::Mat map_bottle, Pose pose, 
+														std::array<int,BD_NB_SENSORS> meas);
 		void addNewBottles(std::vector<Bottle> new_bottles);
-		cv::Point convertMeasurement(int sensor, Pose pose);
+		cv::Point convertMeasurement(int sensor, Pose pose, int measurement);
 		bool verifyMeasAge(void);
 		int calcDistance(Bottle b1, Bottle b2);
 		void updateRecordedBottle(Bottle &b1, Bottle &b2);

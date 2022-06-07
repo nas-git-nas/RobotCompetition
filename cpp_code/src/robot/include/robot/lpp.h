@@ -16,7 +16,7 @@
 #ifndef LOCAL_PATH_PLANNER_H // include header file only once
 #define LOCAL_PATH_PLANNER_H
 
-#define LPP_USE_IMU_TO_UPDATE_HEADING true
+#define LPP_USE_IMU_TO_UPDATE_HEADING false
 
 #define WHEEL_RADIUS 0.0505 // in m
 #define INTER_WHEEL_DISTANCE 0.306 // in m

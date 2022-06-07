@@ -13,20 +13,19 @@
 #include "main.h"
 #include "bd.h"
 
-void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas)
-{
-	ultrasound_meas = meas;
-	updated_meas = ros::Time::now();
-}
-
-cv::Point BottleDetection::calcBestBottle(cv::Mat map_bottle, Pose pose)
+void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat map_bottle, 
+												Pose pose)
 {
 	// calc. position of measured bottles
-	std::vector<Bottle> new_bottles = calcNewBottles(map_bottle, pose);
+	std::vector<Bottle> new_bottles = calcNewBottles(map_bottle, pose, meas);
 	
 	// add new bottles to recorded bottles vector and update it
-	addNewBottles(new_bottles);
+	addNewBottles(new_bottles);	
 	
+}
+
+cv::Point BottleDetection::getBestBottle(void)
+{
 	// if not bottles are recorded return nothing
 	if(recorded_bottles.empty()) {
 		cv::Point nothing;
@@ -45,14 +44,10 @@ cv::Point BottleDetection::calcBestBottle(cv::Mat map_bottle, Pose pose)
 	return recorded_bottles[most_meas_index].position;
 }
 
-std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pose)
+std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pose, 		
+																	 std::array<int,BD_NB_SENSORS> meas)
 {
 	std::vector<Bottle> bottles;
-
-	// if measurement is too old then return empty list
-	if(verifyMeasAge()) {
-		return bottles;
-	}
 	
 	// verify if there is an object and if the object is a bottle or an obstacle
 	for(int i=0; i<BD_NB_SENSORS; i++) {
@@ -60,7 +55,7 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 		int j = sensor_priority[i];
 		
 		// verify if ultrasonic sensor did not measure anything
-		if(ultrasound_meas[j]==0) {
+		if(meas[j]==0) {
 			if(BD_VERBOSE) {
 				ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
 									 << "] did not detect anzthing");
@@ -70,11 +65,11 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 		
 		if(BD_VERBOSE) {
 			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << j 
-								 << "], meas = " << ultrasound_meas[j]);
+								 << "], meas = " << meas[j]);
 		}
 		
 		// convert distance measurement to position in global reference frame
-		cv::Point object = convertMeasurement(j, pose);
+		cv::Point object = convertMeasurement(j, pose, meas[j]);
 		
 		// verify if object is on map (it is an obstacle)
 		bool object_on_map = false;
@@ -148,7 +143,7 @@ void BottleDetection::addNewBottles(std::vector<Bottle> new_bottles)
 	}	
 }
 
-bool BottleDetection::verifyMeasAge(void)
+/*bool BottleDetection::verifyMeasAge(void)
 {	
 	// calc. time since ultrasonic measurements were updated
 	ros::Duration delta_time = ros::Time::now() - updated_meas;
@@ -162,15 +157,15 @@ bool BottleDetection::verifyMeasAge(void)
 	}
 	
 	return false;
-}
+}*/
 
-cv::Point BottleDetection::convertMeasurement(int sensor, Pose pose)
+cv::Point BottleDetection::convertMeasurement(int sensor, Pose pose, int measurement)
 {
 	// position of object in robot frame
 	float robot_x = dist_to_robot[sensor][0] 
-							+ cos(dist_to_robot[sensor][2])*ultrasound_meas[sensor];
+							+ cos(dist_to_robot[sensor][2])*measurement;
 	float robot_y = dist_to_robot[sensor][1] 
-							+ sin(dist_to_robot[sensor][2])*ultrasound_meas[sensor];
+							+ sin(dist_to_robot[sensor][2])*measurement;
 							
 	ROS_INFO_STREAM("robot_x = " << robot_x << ", robot_y = " << robot_y);
 	

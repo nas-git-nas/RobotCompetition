@@ -48,7 +48,7 @@ class DecisionMaker
 							 
 	private:
 		/*** VARIABLES ***/
-		uint8_t dm_state = DM_STATE_EXPLORE;
+		uint8_t dm_state = DM_STATE_IDL;
 		std::vector<std::vector<cv::Point>> sps; // set points
 		uint8_t r_idx = 0; // round index
 		uint8_t sp_idx = 0; // round index

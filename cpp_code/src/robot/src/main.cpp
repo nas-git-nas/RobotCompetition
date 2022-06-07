@@ -38,7 +38,7 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg);
 * ----- Service FUNCTIONS DEFINITIONS-----
 */
 Pose getPoseSRV(ros::ServiceClient &client_get_pose);
-void sendCommandSRV(ros::ServiceClient &client_command, Command command);
+void sendCommandSRV(ros::ServiceClient &client_command, Command &command);
 void windowsLogSRV(ros::Publisher& windows_pub, Pose pose);
 
 
@@ -53,6 +53,7 @@ DecisionMaker dm;
 /*
 * ----- GLOBAL VARIABLES -----
 */
+Pose pose;
 
 /*
 * ----- MAIN -----
@@ -76,18 +77,22 @@ int main(int argc, char **argv)
 	ros::ServiceClient client_get_pose = 
 	 				n.serviceClient<robot::GetPoseSRV>("controller_get_pose_srv");			
 	ros::ServiceClient client_command = 
-	 		n.serviceClient<robot::CommandSRV>("controller_set_command_srv");	 
+	 		n.serviceClient<robot::CommandSRV>("controller_command_srv");	 
 	ros::ServiceClient client_reset_hector = 
 	 				n.serviceClient<robot::SetTrajectorySRV>("reset_map");
 	
+	
+	
+	// measure start time
+	ros::Time start_time = ros::Time::now();
 
 	// wait until all nodes are initialized
-	ros::Duration(1, 0).sleep();
+	ros::Duration(2, 0).sleep();
 	ROS_INFO_STREAM("\n\n---------- main: start ----------\n\n");
 
 
 	// current pose
-	Pose pose = getPoseSRV(client_get_pose);
+	pose = getPoseSRV(client_get_pose);
 	dm.init(pose);
 	
 	// define command and send init. command
@@ -107,10 +112,18 @@ int main(int argc, char **argv)
   		dm.stateMachine(pose, map, bd, command);
   		
   		// send command to arduino
-  		//sendCommandSRV(client_command, command);
+  		sendCommandSRV(client_command, command);
 
 		// send log to windows
   		windowsLogSRV(windows_pub, pose);
+  		
+  		
+  		ros::Duration delta_time = ros::Time::now()-start_time;
+  		if(delta_time.toSec() > 40) {
+			Command command_stop;
+			sendCommandSRV(client_command, command_stop);
+			ros::Duration(10, 0).sleep();			
+  		}
   		
   		// make one ros cycle
 		ros::spinOnce();
@@ -132,14 +145,28 @@ void mapCB(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 {
 	std::array<int,BD_NB_SENSORS> meas;
-	ROS_INFO_STREAM("New UM");
+	
+	bool measured_something = false;
 	for(int i=0; i<BD_NB_SENSORS; i++) {
 		meas[i] = msg->data[i];
 		
-		ROS_INFO_STREAM("main::arduinoCB::US[" << i << "]: " << meas[i]);
+		if(meas[i]>BD_ULTRASOUND_MAX_DISTANCE || meas[i]<0) {
+			meas[i] = 0;
+			ROS_ERROR("main::arduinoCB: measurement out of range");
+		}
+		
+		if(meas[i] != 0) {
+			measured_something = true;
+		}
+		
+		if(MAIN_VERBOSE_BD) {
+			ROS_INFO_STREAM("main::arduinoCB::US[" << i << "]: " << meas[i]);
+		}
 	}
 
-	bd.setUltrasound(meas);
+	if(measured_something) {
+		bd.setUltrasound(meas, map.getMapThresholded(), pose);
+	}
 	/*ROS_INFO_STREAM("GPP::motor_vel (" << msg->data[0] << "," 
 						<< msg->data[1] << "," << msg->data[2] << "," 
 						<< msg->data[3] << ")" << std::endl);*/
@@ -172,8 +199,16 @@ Pose getPoseSRV(ros::ServiceClient &client_get_pose)
 	return pose;
 }
 
-void sendCommandSRV(ros::ServiceClient &client_command, Command command)	
+void sendCommandSRV(ros::ServiceClient &client_command, Command &command)	
 {
+
+	ROS_INFO_STREAM("main::sendCommandSRV: " << command.stop_motor << ", " << command.nb_nodes);
+							
+	for(int i=0; i<command.trajectory_x.size(); i++) {
+		ROS_INFO_STREAM("trajectory[" << i << "] = (" << command.trajectory_x[i] << "," 
+								<< command.trajectory_y[i] << ")");
+	}
+
 	robot::CommandSRV srv;	
 	if(!command.stop_motor) {
 		srv.request.trajectory_x = command.trajectory_x;
@@ -181,9 +216,9 @@ void sendCommandSRV(ros::ServiceClient &client_command, Command command)
 		srv.request.nb_nodes = command.nb_nodes;
 	}
 	srv.request.stop_motor = command.stop_motor;
-	srv.request.arm_angle = command.arm_angle;
-	srv.request.basket_angle = command.basket_angle;
-	srv.request.air_pump = command.air_pump;
+	//srv.request.arm_angle = command.arm_angle;
+	//srv.request.basket_angle = command.basket_angle;
+	//srv.request.air_pump = command.air_pump;
 
 	if(!client_command.call(srv)) {
 		ROS_ERROR("main::sendCommandSRV: Failed to call service!");

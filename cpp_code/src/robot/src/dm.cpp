@@ -29,10 +29,10 @@ void DecisionMaker::init(Pose pose)
 
 	cv::Point first_point;
 #ifdef DEBUG_FAKE_MAP
-	first_point.x = 550; //pose.position.x + 200;
-	first_point.y = 200; //pose.position.y;
+	first_point.x = 500; // 550; //pose.position.x + 200;
+	first_point.y = 410; //200; //pose.position.y;
 #else
-	first_point.x = pose.position.x + 100;
+	first_point.x = pose.position.x + 200;
 	first_point.y = pose.position.y;
 #endif
 
@@ -40,6 +40,8 @@ void DecisionMaker::init(Pose pose)
 	first_round.push_back(first_point);
 	
 	sps.push_back(first_round);
+	
+	dm_state = DM_STATE_EXPLORE;
 
 }
 
@@ -47,6 +49,9 @@ void DecisionMaker::init(Pose pose)
 void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
 	// turn everything off
+	command.trajectory_x.clear();
+	command.trajectory_y.clear();
+	command.nb_nodes = 0;
 	command.stop_motor = true;
 	command.arm_angle = DM_COMMAND_BASKET_REST;
 	command.basket_angle = DM_COMMAND_ARM_REST;
@@ -74,8 +79,7 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 		default:
 			dm_state = DM_STATE_IDL;
 	}
-	
-	
+
 }
 
 void DecisionMaker::explore(Pose pose, Map &map, Command &command)

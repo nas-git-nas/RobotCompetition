@@ -11,19 +11,19 @@
 /*
  * --- CONSTANTS
  */
-#define M0S 2
+#define M0S 2   // motor on the right
 #define M0E A2
 #define M0D A3
 
-#define M1S 3
+#define M1S 3   // motor on the right
 #define M1E A4
 #define M1D A5
 
-#define M2S 4
+#define M2S 4   // motor on the left
 #define M2E A6
 #define M2D A7
 
-#define M3S 5
+#define M3S 5   // motor on the left
 #define M3E A8
 #define M3D A9
 
@@ -159,17 +159,17 @@ bool motorCalcDirection(float motor_vel, uint8_t motor_id)
     case 0:
     case 1: // motor_id = 0 or 1 (motor on the right side)
       if(motor_vel>0) { // move frontwards
-        return true;
-      } else { // move backwards
         return false;
+      } else { // move backwards
+        return true;
       }
       break;
     case 2:
     case 3: // motor_id = 2 or 3 (motor on the right side)
       if(motor_vel>0) { // move frontwards
-        return false;
-      } else { // move backwards
         return true;
+      } else { // move backwards
+        return false;
       }
       break;  
   }
@@ -240,7 +240,7 @@ void processUltrasonicSensors(void)
  */
 void setup()
 {
-  //setupMotors(); // init. motors
+  setupMotors(); // init. motors
 
   pinMode(LED_BUILTIN, OUTPUT);
   nh.initNode();
@@ -260,13 +260,13 @@ void setup()
 void loop()
 {
   nh.spinOnce();
-  /*
+  
   if(new_motor_command) {
     for(int i=0; i<4; i++) {
       setMotorCommand(vel[i], i);
     }
     new_motor_command = false;
-  }*/
+  }
   
   // process all ultrasonic sensors for which the waiting time is over
   processUltrasonicSensors();
