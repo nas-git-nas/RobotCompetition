@@ -20,7 +20,7 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat 
 	for(int i=0; i<BD_NB_SENSORS; i++) {
 		if(meas[i]>BD_ULTRASOUND_MAX_DISTANCE || meas[i]<0) {
 			meas[i] = 0;
-			if(BD_VERBOSE) {
+			if(BD_VERBOSE_SET_ULTRASOUND) {
 				ROS_WARN("main::arduinoCB: measurement out of range");
 			}
 		}
@@ -35,17 +35,18 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat 
 	//	subtract one measurement number of all bottles that were not updated this round
 	ageRecordedBottles();
 	
-	/*ROS_INFO("bd::setUltrasound: ---- measured bottles ----");
-	for(int i=0; i<meas.size(); i++) {
-		ROS_INFO_STREAM("bd::setUltrasound: m[" << i << "] = (" << meas[i] << ")");
-	}		
-	ROS_INFO("bd::setUltrasound: ---- recorded bottles ----");
-	for(int i=0; i<recorded_bottles.size(); i++) {
-		ROS_INFO_STREAM("bd::setUltrasound: b[" << i << "] = (" << recorded_bottles[i].position.x 
-								<< "," << recorded_bottles[i].position.y << ";" 
-								<< recorded_bottles[i].nb_meas << ")");		
-	}*/
-	
+	if(BD_VERBOSE_SET_ULTRASOUND) {
+		ROS_INFO("bd::setUltrasound: ---- measured bottles ----");
+		for(int i=0; i<meas.size(); i++) {
+			ROS_INFO_STREAM("bd::setUltrasound: m[" << i << "] = (" << meas[i] << ")");
+		}		
+		ROS_INFO("bd::setUltrasound: ---- recorded bottles ----");
+		for(int i=0; i<recorded_bottles.size(); i++) {
+			ROS_INFO_STREAM("bd::setUltrasound: b[" << i << "] = (" << recorded_bottles[i].position.x 
+									<< "," << recorded_bottles[i].position.y << ";" 
+									<< recorded_bottles[i].nb_meas << ")");		
+		}
+	}
 }
 
 Bottle BottleDetection::getBestBottle(void)
@@ -81,25 +82,31 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 	
 	// verify if there exists a map
 	if(map_bottle.empty()) {
-		if(BD_VERBOSE) {
+		if(BD_VERBOSE_CALC) {
 			ROS_WARN("bd::calcBottlePosition: map does not exists");
 		}
 		return bottles;
 	}
+	
+	cv::imwrite("map_bd.jpg", map_bottle);
+	ROS_INFO_STREAM("type: " << map_bottle.type());
+	
+	std::cout << "--map start" << std::endl << map_bottle << std::endl 
+				 << "--map end" << std::endl;
 	
 	// verify if there is an object and if the object is a bottle or an obstacle
 	for(int i=0; i<BD_NB_SENSORS; i++) {
 		
 		// verify if ultrasonic sensor did not measure anything
 		if(meas[i]==0) {
-			if(BD_VERBOSE) {
+			if(BD_VERBOSE_CALC) {
 				ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i 
 									 << "] did not detect anzthing");
 			}
 			continue;
 		}
 		
-		if(BD_VERBOSE) {
+		if(BD_VERBOSE_CALC) {
 			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i 
 								 << "], meas = " << meas[i]);
 		}
@@ -111,6 +118,9 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 		bool object_on_map = false;
 		for(int k=0; k<2*BD_SEARCH_RANGE; k++) {
 			for( int l=0; l<2*BD_SEARCH_RANGE; l++) {
+				
+				//ROS_INFO_STREAM(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k,
+							//										object.y-BD_SEARCH_RANGE+1));
 				if(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k, 
 										 		  object.y-BD_SEARCH_RANGE+l) == 0) {
 					object_on_map = true;
@@ -129,7 +139,7 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 			bottles.push_back(temp_bottle);
 		}
 		
-		if(BD_VERBOSE) {
+		if(BD_VERBOSE_CALC) {
 			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i 
 								 << "] is on map = " << object_on_map);
 		}	
@@ -141,7 +151,7 @@ void BottleDetection::addNewBottles(std::vector<Bottle> new_bottles)
 {
 	// do nothing if there are no new bottles
 	if(new_bottles.empty()) {
-		if(BD_VERBOSE) {
+		if(BD_VERBOSE_CALC) {
 			ROS_INFO_STREAM("bd::addNewBottles: no new bottles -> return");
 		}
 		return;
@@ -163,7 +173,9 @@ void BottleDetection::addNewBottles(std::vector<Bottle> new_bottles)
 		// add measurement to recorded bottles if it is not yet registered
 		if(!bottle_recorded) {
 			recorded_bottles.push_back(new_bottles[i]);
-			ROS_INFO_STREAM("bd::addNewBottles: add new bottle");
+			if(BD_VERBOSE_CALC) {
+				ROS_INFO_STREAM("bd::addNewBottles: add new bottle");
+			}
 		}	
 	}
 	

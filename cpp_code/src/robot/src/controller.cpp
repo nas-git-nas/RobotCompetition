@@ -12,6 +12,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/opencv.hpp>
 #include <tf/tf.h>
+#include <iostream>
 
 #include "main.h"
 #include "lpp.h"
@@ -34,6 +35,9 @@ LPP lpp;
 */
 Pose pose;
 bool turn_hector_off = false;
+float arm_motor = 0;
+float air_pump = 0;
+float basket_motor = 0;
 
 /*
 * ----- CALLBACK FUNCTION DEFINITIONS -----
@@ -49,6 +53,16 @@ bool getPoseSRV(robot::GetPoseSRV::Request &req,
 bool setCommandSRV(robot::CommandSRV::Request &req,
          		 	 robot::CommandSRV::Response &res);
 void controllerCommandMotors(ros::Publisher& pub_motor_vel, bool stop_robot);
+
+float rad2degrees(float angle)
+{
+    return (angle*180.0)/PI;
+}
+
+float roundFloat(float number)
+{
+    return floor(number * 10000.0) / 10000.0;
+} 
 
 
 /*
@@ -187,10 +201,15 @@ bool setCommandSRV(robot::CommandSRV::Request &req,
 	// set current state inside LPP
 	lpp.set_dm_state(req.dm_state);
 	
+	//
+	arm_motor = float( req.arm_angle );
+	air_pump = float( req.air_pump );
+	basket_motor = float( req.basket_angle );
+	
 	if(req.stop_motor) {
 		lpp.stopMotors();
 		
-		if(CONTROLLER_VERBOSE) {
+		if(CONTROLLER_VERBOSE_COMMAND) {
 			ROS_INFO_STREAM("controller::setLPPCB: call lpp.stop_motor");
 		}
 	} else {
@@ -206,7 +225,7 @@ bool setCommandSRV(robot::CommandSRV::Request &req,
 		// set trajectory in LPP
 		lpp.setSetPoints(trajectory);
 		
-		if(CONTROLLER_VERBOSE) {
+		if(CONTROLLER_VERBOSE_COMMAND) {
 			ROS_INFO_STREAM("controller::setLPPCB: call lpp.setSetPoints");
 		}
 	}
@@ -231,13 +250,20 @@ void controllerCommandMotors(ros::Publisher& pub_motor_vel, bool stop_robot)
 		}
 	}
 	
+	// define other commands
+	msg_rasp2ard.data.push_back(arm_motor);
+	msg_rasp2ard.data.push_back(basket_motor);
+	msg_rasp2ard.data.push_back(air_pump);
+	
 	// send motor commands to arduino
 	pub_motor_vel.publish(msg_rasp2ard);
 
-	if(CONTROLLER_VERBOSE) {
+	if(CONTROLLER_VERBOSE_MOTORS) {
   		ROS_INFO_STREAM("LPP::motor_vel: (" << msg_rasp2ard.data[0] << "," 
   					 			<< msg_rasp2ard.data[1] << "," << msg_rasp2ard.data[2] 
-  					 			<< "," << msg_rasp2ard.data[3] << ")" << std::endl);
+  					 			<< "," << msg_rasp2ard.data[3] << ")");
+  		ROS_INFO_STREAM("LPP: arm_motor=" << msg_rasp2ard.data[4] << ", basket_motor=" 
+  					 			<< msg_rasp2ard.data[5] << ", air_pump=" << msg_rasp2ard.data[6]);
 	}	
 }
 
@@ -310,16 +336,11 @@ void controllerCommandMotors(ros::Publisher& pub_motor_vel, bool stop_robot)
 	}
 }*/
 
-/*float rad2degrees(float angle)
-{
-    return (angle*180.0)/PI;
-}
 
-float roundFloat(float number)
-{
-    return floor(number * 10000.0) / 10000.0;
-} 
-
+/*
+* LOGGING FUNCTIONS
+*/
+/*
 void initLogLPP(std::vector<cv::Point> trajectory)
 {
 	
@@ -342,13 +363,13 @@ void initLogLPP(std::vector<cv::Point> trajectory)
 	log.close();
 }
 
-void logLPP(LPP &lpp)
+void logLPP(void)
 {
 	// create logging instance
 	std::ofstream log;
 	log.open("log.txt", std::ios_base::app);
 
-
+	std::array<float,4> vel = lpp.getMotorVelocity();
 	std::array<float,3> pose = lpp.getPose();
 	std::vector<cv::Point> set_points = lpp.getSetPoints();
 	
@@ -356,6 +377,34 @@ void logLPP(LPP &lpp)
 	log << roundFloat(pose[0]) << "," << roundFloat(pose[1]) << "," 
 										<< roundFloat(pose[2]) << "\n";
 										
+	if(CONTROLLER_VERBOSE_LOG) {
+		ROS_INFO_STREAM("LPP::logLPP: log=(" << roundFloat(pose[0]) << "," << roundFloat(pose[1]) 
+								<< "," << roundFloat(pose[2]) << ")");	
+	}						
 
 	log.close();
-}*/
+}
+
+void initLPP(void)
+{	
+	// update pose of LPP
+	float new_pose[3] = {60.0,60.0,0.0};
+	lpp.setPose(new_pose);
+
+	// set current state and trajectory inside LPP
+	std::vector<cv::Point> trajectory;
+	lpp.set_dm_state(DM_STATE_APPROACH);	
+	cv::Point point_temp;
+	point_temp.x = 0;
+	point_temp.y = 0;
+	trajectory.push_back(point_temp);
+	point_temp.x = 80;
+	point_temp.y = 80;
+	trajectory.push_back(point_temp);
+	
+	lpp.setSetPoints(trajectory);
+	
+	// init. logging
+	initLogLPP(trajectory);
+}
+*/

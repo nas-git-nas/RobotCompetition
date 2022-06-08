@@ -14,15 +14,16 @@
 //#define DEBUG_WITHOUT_LPP
 
 // main.cpp
-#define MAIN_VERBOSE 			false
-#define MAIN_VERBOSE_BD 		false
-#define MAIN_VERBOSE_COMMAND 	false
+#define MAIN_VERBOSE 					false
+#define MAIN_VERBOSE_BD 				true
+#define MAIN_VERBOSE_COMMAND 			false
 
 // map.cpp
 #define MAP_VERBOSE_RAW_DATA 			false
 #define MAP_VERBOSE_PREPROCESS 		false
 #define MAP_VERBOSE_CALC_POLYGONS 	false
-#define MAP_DRAW_MAP 					true
+
+#define MAP_DRAW_MAP true
 
 #define MAP_SIZE				1000 // in cm, map size in pixels
 #define MAP_RESOLUTION 		0.01 // one pixel = 1cm
@@ -30,29 +31,35 @@
 #define MAP_START_Y 			0.09
 
 // visibility.cpp
-#define VISIBILITY_VERBOSE false
+#define VISIBILITY_VERBOSE 			false
 
 // dijkstra.cpp
-#define DIJKSTRA_VERBOSE false
+#define DIJKSTRA_VERBOSE 				false
 
 // controller.cpp
 #define CONTROLLER_VERBOSE 			false
 #define CONTROLLER_VERBOSE_IMU 		false
 #define CONTROLLER_VERBOSE_POSE_CB 	false
 #define CONTROLLER_VERBOSE_HECTOR 	false
+#define CONTROLLER_VERBOSE_LOG 		false
+#define CONTROLLER_VERBOSE_COMMAND	false
+#define CONTROLLER_VERBOSE_MOTORS	false
 
 // lpp.cpp
-#define LPP_VERBOSE false
+#define LPP_VERBOSE 						false
+
 
 // bd.cpp
-#define BD_VERBOSE false
+#define BD_VERBOSE_CALC 				true
+#define BD_VERBOSE_SET_ULTRASOUND	false
 
-#define BD_ULTRASOUND_MAX_DISTANCE 30
+#define BD_ULTRASOUND_MAX_DISTANCE 50
 
 // dm.cpp
-#define DM_VERBOSE 			false
-#define DM_VERBOSE_GPP 		true
-#define DM_VERBOSE_BD		false
+#define DM_VERBOSE 						false
+#define DM_VERBOSE_GPP 					false
+#define DM_VERBOSE_BD					true
+#define DM_VERBOSE_EXPLORE				true
 
 #define DM_COMMAND_ARM_REST 		0
 #define DM_COMMAND_BASKET_REST 	0

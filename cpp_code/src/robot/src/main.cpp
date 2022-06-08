@@ -106,20 +106,22 @@ int main(int argc, char **argv)
   			ROS_INFO_STREAM("main::counter: " << counter << "\n");
   		}
   		
+		// calc. threhsolded and dilated map
+		if(!map.preprocessData()) {
+			ROS_ERROR("main::preprocessData: failed");
+		}	
+  		
 		// get current pose
 		pose = getPoseSRV(client_get_pose);
-
 		
 		// make one cycle in state machine
   		dm.stateMachine(pose, map, bd, command);
   		
   		// send command to arduino
-  		sendCommandSRV(client_command, command);
+  		//sendCommandSRV(client_command, command);
 
 		// send log to windows
   		windowsLogSRV(windows_pub, pose);
-  		
-  		// turn off motors after a certain time
 
   		
   		// make one ros cycle
@@ -157,14 +159,17 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 	}	*/
 
 	// update recorded measurements in BD if there are new ones
-	bd.setUltrasound(meas, map.getMapThresholded(), pose);
+	bd.setUltrasound(meas, map.getMapDilated(), pose);
 
 	
-	/*Bottle bottle = bd.getBestBottle();
+	
 	if(MAIN_VERBOSE_BD) {
+		Bottle bottle = bd.getBestBottle();
 		ROS_INFO_STREAM("main::arduinoCB: best bottle = (" << bottle.position.x << "," 
 								<< bottle.position.y << ";" << bottle.nb_meas << ")");
-	}*/
+		ROS_INFO_STREAM("main::arduinoCB: pose = (" << pose.position.x << "," 
+																	<< pose.position.y << ")");
+	}
 }
 
 
@@ -197,12 +202,15 @@ Pose getPoseSRV(ros::ServiceClient &client_get_pose)
 void sendCommandSRV(ros::ServiceClient &client_command, Command &command)	
 {
 	if(MAIN_VERBOSE_COMMAND) {
-		ROS_INFO_STREAM("main::sendCommandSRV: " << command.stop_motor << ", " << command.nb_nodes);
-		ROS_INFO_STREAM("main::sendCommandSRV: " << unsigned(command.dm_state));						
+		ROS_INFO_STREAM("main::sendCommandSRV:");
+		ROS_INFO_STREAM("main: stop motor=" << command.stop_motor << ", nb_nodes=" << command.nb_nodes
+							<< ", state=" << unsigned(command.dm_state));		
 		for(int i=0; i<command.trajectory_x.size(); i++) {
 			ROS_INFO_STREAM("trajectory[" << i << "] = (" << command.trajectory_x[i] << "," 
 									<< command.trajectory_y[i] << ")");
 		}
+		ROS_INFO_STREAM("main: arm_angle=" << command.arm_angle << ", basket_angle=" 
+								<< command.basket_angle << ", air_pump=" << unsigned(command.air_pump));
 	}
 
 	robot::CommandSRV srv;
@@ -213,9 +221,9 @@ void sendCommandSRV(ros::ServiceClient &client_command, Command &command)
 		srv.request.nb_nodes = command.nb_nodes;
 	}
 	srv.request.stop_motor = command.stop_motor;
-	//srv.request.arm_angle = command.arm_angle;
-	//srv.request.basket_angle = command.basket_angle;
-	//srv.request.air_pump = command.air_pump;
+	srv.request.arm_angle = command.arm_angle;
+	srv.request.basket_angle = command.basket_angle;
+	srv.request.air_pump = command.air_pump;
 
 	if(!client_command.call(srv)) {
 		ROS_ERROR("main::sendCommandSRV: Failed to call service!");

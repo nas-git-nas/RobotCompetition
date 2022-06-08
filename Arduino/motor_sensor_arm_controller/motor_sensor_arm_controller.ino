@@ -36,12 +36,12 @@
 #define MOTOR_PWM_ZERO_VEL float(MOTOR_PWM_MIN - (MOTOR_PWM_VEL_DELTA*MOTOR_VEL_MIN))
 
 #define SONAR_NUM     7 // number of sensors.
-#define MAX_DISTANCE 30 // maximum distance (in cm) to ping.
+#define MAX_DISTANCE 50 // maximum distance (in cm) to ping.
 #define PING_INTERVAL 35 // milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
-#define PICK 18 // position of arm when picks up the bottle
+#define PICK 15 // position of arm when picks up the bottle
 #define REST 80 // position of arm when at rest
-#define DROP 120 // position of arm when drops the bottle
+#define DROP 125 // position of arm when drops the bottle
 #define FAST 3 // high speed of arm
 #define SLOW 1 // low speed of arm
 
@@ -287,12 +287,12 @@ void processArmMovement(void)
   digitalWrite(PUMP_PIN, HIGH); // the pump is ON
   delay(20);
   arm_pos_feedback = arm_pos(REST, PICK, FAST, SLOW); // arm picks up bottle
-  delay(20);
+  delay(500);
   arm_pos_feedback = false;
   arm_pos_feedback = arm_pos(PICK, DROP, FAST, SLOW); // arm drops bottle
   delay(20);
   digitalWrite(PUMP_PIN, LOW); // the pump is OFF
-  delay(20);
+  delay(300);
   arm_pos_feedback = false;
   arm_pos_feedback = arm_pos(DROP, REST, FAST, SLOW); // arm returns to rest position
   delay(20);
@@ -305,7 +305,7 @@ void processArmMovement(void)
 void setup()
 {
   setupMotors(); // init. motors
-  setupArm(); // init. arm
+  //setupArm(); // init. arm
 
   pinMode(LED_BUILTIN, OUTPUT);
   nh.initNode();
@@ -336,8 +336,10 @@ void loop()
   // process all ultrasonic sensors for which the waiting time is over
   processUltrasonicSensors();
 
+
+  /*arm_pos_command = false;
   if(arm_pos_command) {
     processArmMovement();
     arm_pos_command = false;
-  }
+  }*/
 }

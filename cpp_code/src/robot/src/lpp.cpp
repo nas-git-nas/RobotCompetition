@@ -56,8 +56,7 @@ std::array<float,4> LPP::getMotorVelocity(void)
 	switch(dm_state) {	
 		case DM_STATE_EXPLORE:
 		case DM_STATE_RETURN:
-			updateApproachVelocity();
-			//updateMotorVelocity();
+			updateMotorVelocity();
 			break;
 		case DM_STATE_APPROACH:	
 			updateApproachVelocity();
@@ -193,7 +192,7 @@ void LPP::updateApproachVelocity(void)
 	}
 	
 	// verify if bottle is at optimal position
-	if(distance<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
+	if(abs(distance-LPP_ARM_LENGTH)<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
 		stop_robot = true;
 		robotStop();
 		return;
@@ -209,7 +208,7 @@ void LPP::updateApproachVelocity(void)
 	// turn on spot or move to next set-point depending on state
 	if(moving_state) {
 		// move straight if error is larger than arm length, otherwise backwards
-		if(distance > APPROACH_ARM_LENGTH) {
+		if(distance > LPP_ARM_LENGTH) {
 			robotMove(theta_error, theta_error_integration);
 		} else {
 			robotMoveBack(theta_error, theta_error_integration);

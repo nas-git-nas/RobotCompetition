@@ -20,15 +20,15 @@
 
 #define WHEEL_RADIUS 0.0505 // in m
 #define INTER_WHEEL_DISTANCE 0.306 // in m
-#define SET_POINT_DISTANCE_THRESHOLD 15 // in cm, error allowed to reach setpoint
+#define SET_POINT_DISTANCE_THRESHOLD 8 // in cm, error allowed to reach setpoint
 #define TURNING_UPPER_THRESHOLD 0.3491 // in rad, 20°
 #define TURNING_LOWER_THRESHOLD 0.2618 // in rad, 15°
 
-#define LPP_BOTTLE_DIST_THR 5 // in cm
+#define LPP_BOTTLE_DIST_THR 3 // in cm
 #define LPP_BOTTLE_ANGLE_THR 0.0873 // rad, equal to 5 degrees
 #define APPROACH_UPPER_THRESHOLD 0.1745 // in rad, 10°
 #define APPROACH_LOWER_THRESHOLD 0.0873 // in rad, 5°
-#define APPROACH_ARM_LENGTH 44 // in cm
+#define LPP_ARM_LENGTH 44 // in cm
 
 #define VEL_TURN_MAX 1.0 // 3.5// in rad/s
 #define VEL_TURN_MIN 0.7 // in rad/s

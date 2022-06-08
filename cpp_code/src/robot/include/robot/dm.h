@@ -22,9 +22,20 @@
 #define DM_SP_REACHED_THR 10 //cm, should be higher than DM_SP_CHANGE
 #define DM_SP_CHANGE 5 //cm, how much set point should be moved towards robot if it is not reachable
 
-#define DM_BOTTLE_NB_MEAS_THR 3
+#define DM_BOTTLE_NB_MEAS_THR 1
+#define DM_RECYCLING_OFFSET			20	
 
 
+#define DM_PICKUP_STATE_START			0
+#define DM_PICKUP_STATE_MOVE			1
+#define DM_PICKUP_STATE_VERIFY		3
+
+#define DM_RETURN_STATE_GO_BACK		0
+#define DM_RETURN_STATE_TURN			1
+
+#define DM_EMPTY_STATE_START			0	
+#define DM_EMPTY_STATE_MOVE			1
+#define DM_EMPTY_MOVE_DURATION		5 // in s	
 
 
 
@@ -49,6 +60,9 @@ class DecisionMaker
 		uint8_t r_idx = 0; // round index
 		uint8_t sp_idx = 0; // round index
 		ros::Time start_time;
+		cv::Point start_position;
+		Bottle pickup_bottle;
+		uint8_t nb_collected_bottles;
 		
 		/*** CLASSES ***/
 		VisibilityGraph visibility_graph;
@@ -59,8 +73,11 @@ class DecisionMaker
 		void verifyTime(void);
 		void explore(Pose pose, Map &map, BottleDetection &bd, Command &command);
 		void approach(Pose pose, Map &map, BottleDetection &bd, Command &command);
+		void pickup(BottleDetection &bd, Command &command);
+		void stateReturn(Pose pose, Map &map, Command &command);
+		void empty(Command &command);
 		bool updateSPIndices(Pose pose);
-		void GPP(Pose pose, Map &map, Command &command);
+		void GPP(Pose pose, Map &map, cv::Point destination, Command &command);
 		int calcDistance(cv::Point p1, cv::Point p2);
 		float limitAngle(float angle);
 

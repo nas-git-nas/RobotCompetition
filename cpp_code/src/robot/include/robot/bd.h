@@ -16,9 +16,9 @@
 
 #define BD_NB_SENSORS 7
 #define BD_UPDATE_TIME_LIMIT 2 // in s, ultrasonic measurement must be younger
-#define BD_SEARCH_RANGE 4 // search in this environment for obstacles
+#define BD_SEARCH_RANGE 20 // search in this environment for obstacles
 								  // [x/y - BD_SEARCH_RANGE, x/y + BD_SEARCH_RANGE]
-#define BD_BOTTLE_THR 15 // in cm, maximal distance at which two measurements are
+#define BD_BOTTLE_THR 30 // in cm, maximal distance at which two measurements are
 								// considered to be the same bottle
 #define BD_NB_MEAS_MAX 30 // maximum number of measurements allowed
 

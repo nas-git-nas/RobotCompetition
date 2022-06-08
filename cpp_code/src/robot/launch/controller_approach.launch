@@ -1,0 +1,8 @@
+<launch>
+	
+	<node pkg="robot" type="controller" name="controller" 
+	output="screen"/>
+	
+
+	
+</launch>
