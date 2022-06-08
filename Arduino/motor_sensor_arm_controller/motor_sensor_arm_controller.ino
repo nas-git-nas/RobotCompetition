@@ -260,21 +260,21 @@ void setupArm(void)
 
 bool arm_pos(int init_pos, int final_pos, int high_speed, int slow_speed) {
   if (init_pos < final_pos) {
-    for(int pos = init_pos; pos >= final_pos-10; pos -= high_speed) {
-      myservo.write(pos);
-      delay(40);
-    }
-    for(int pos = final_pos-10; pos >= final_pos; pos -= slow_speed) {
-      myservo.write(pos);
-      delay(20);
-    }
-  }
-  else {
     for(int pos = init_pos; pos <= final_pos-10; pos += high_speed) {
       myservo.write(pos);
       delay(40);
     }
     for(int pos = final_pos-10; pos <= final_pos; pos += slow_speed) {
+      myservo.write(pos);
+      delay(20);
+    }
+  }
+  else {
+    for(int pos = init_pos; pos >= final_pos+10; pos -= high_speed) {
+      myservo.write(pos);
+      delay(40);
+    }
+    for(int pos = final_pos+10; pos >= final_pos; pos -= slow_speed) {
       myservo.write(pos);
       delay(20);
     }
