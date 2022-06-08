@@ -7,6 +7,7 @@
 #include <std_msgs/Int16MultiArray.h>
 #include <std_msgs/Float32.h>
 #include <NewPing.h>
+#include <Servo.h>
 
 /*
  * --- CONSTANTS
@@ -34,23 +35,32 @@
 #define MOTOR_PWM_VEL_DELTA float((MOTOR_PWM_MAX-MOTOR_PWM_MIN)/(MOTOR_VEL_MAX-MOTOR_VEL_MIN))
 #define MOTOR_PWM_ZERO_VEL float(MOTOR_PWM_MIN - (MOTOR_PWM_VEL_DELTA*MOTOR_VEL_MIN))
 
-#define SONAR_NUM     7 // Number of sensors.
-#define MAX_DISTANCE 60 // Maximum distance (in cm) to ping.
-#define PING_INTERVAL 35 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
+#define SONAR_NUM     7 // number of sensors.
+#define MAX_DISTANCE 30 // maximum distance (in cm) to ping.
+#define PING_INTERVAL 35 // milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
+#define PICK 18 // position of arm when picks up the bottle
+#define REST 80 // position of arm when at rest
+#define DROP 120 // position of arm when drops the bottle
+#define FAST 3 // high speed of arm
+#define SLOW 1 // low speed of arm
+
+#define PUMP_PIN 25 // pin for the pump
 
 /*
  * --- GLOBAL VARIABLES
  */
 float vel[4] = {0,0,0,0};  // angular velocitiy in rad/s
-bool new_motor_command = false;
+bool new_motor_command = false; // command from ROS to activate motor
+bool arm_pos_feedback = false; // feedback on the arm position for ROS
+bool arm_pos_command = false; // command from ROS to activate arm
 
-unsigned long pingTimer[SONAR_NUM]; // Holds the times when the next ping should happen for each sensor.
-unsigned int cm[SONAR_NUM];         // Where the ping distances are stored.
-uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
+unsigned long pingTimer[SONAR_NUM]; // holds the times when the next ping should happen for each sensor.
+unsigned int cm[SONAR_NUM];         // where the ping distances are stored.
+uint8_t currentSensor = 0;          // keeps track of which sensor is active.
 
-NewPing sonar[SONAR_NUM] = {     // Sensor object array.
-  NewPing(30, 31, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
+NewPing sonar[SONAR_NUM] = {     // sensor object array.
+  NewPing(30, 31, MAX_DISTANCE), // each sensor's trigger pin, echo pin, and max distance to ping.
   NewPing(32, 33, MAX_DISTANCE),
   NewPing(34, 35, MAX_DISTANCE),
   NewPing(36, 37, MAX_DISTANCE),
@@ -58,6 +68,8 @@ NewPing sonar[SONAR_NUM] = {     // Sensor object array.
   NewPing(40, 41, MAX_DISTANCE),
   NewPing(42, 43, MAX_DISTANCE)
 };
+
+Servo myservo; // create servo object to control a servo
 
 
 /*
@@ -70,6 +82,10 @@ void raspberryCB( const std_msgs::Float32MultiArray& rasp2ard_msg){
     vel[i] = rasp2ard_msg.data[i];
   }
   new_motor_command = true;
+
+  if(rasp2ard_msg.data[4]==1) {
+    arm_pos_command = true;
+  }
 }
 
 void echoCheck() { // If ping received, set the sensor distance to array.
@@ -199,8 +215,7 @@ uint8_t motorCalcPWM(float motor_vel)
  * --- ULTRASONIC FCT.
  */
 void oneSensorCycle() 
-{ // Sensor ping cycle complete, do something with the results.
-  // The following code would be replaced with your code that does something with the ping results.
+{ // sensor ping cycle complete, do something with the results.
   for (uint8_t i = 0; i < SONAR_NUM; i++) {
     Serial.print(i);
     Serial.print("=");
@@ -218,21 +233,70 @@ void oneSensorCycle()
 
 void processUltrasonicSensors(void)
 {
-  // Loop through all the sensors
+  // loop through all the sensors
   for (uint8_t i = 0; i < SONAR_NUM; i++) { 
-    if (millis() >= pingTimer[i]) {         // Is it this sensor's time to ping?
-      pingTimer[i] += PING_INTERVAL * SONAR_NUM;  // Set next time this sensor will be pinged.
+    if (millis() >= pingTimer[i]) {         // is it this sensor's time to ping?
+      pingTimer[i] += PING_INTERVAL * SONAR_NUM;  // set next time this sensor will be pinged.
       if (i == 0 && currentSensor == SONAR_NUM - 1) {
-        oneSensorCycle(); // Sensor ping cycle complete, do something with the results.
+        oneSensorCycle(); // sensor ping cycle complete, do something with the results.
       }
-      sonar[currentSensor].timer_stop();          // Make sure previous timer is canceled before starting a new ping (insurance).
-      currentSensor = i;                          // Sensor being accessed.
-      cm[currentSensor] = 0;                      // Make distance zero in case there's no ping echo for this sensor.
-      sonar[currentSensor].ping_timer(echoCheck); // Do the ping (processing continues, interrupt will call echoCheck to look for echo).
+      sonar[currentSensor].timer_stop();          // make sure previous timer is canceled before starting a new ping (insurance).
+      currentSensor = i;                          // sensor being accessed.
+      cm[currentSensor] = 0;                      // make distance zero in case there's no ping echo for this sensor.
+      sonar[currentSensor].ping_timer(echoCheck); // do the ping (processing continues, interrupt will call echoCheck to look for echo).
     }
   }
 }
 
+
+/*
+ * --- ARM FCT.
+ */
+void setupArm(void)
+{
+  myservo.attach(10); // attaches the servo on pin 10 to the servo object
+  pinMode(PUMP_PIN, OUTPUT);
+}
+
+bool arm_pos(int init_pos, int final_pos, int high_speed, int slow_speed) {
+  if (init_pos < final_pos) {
+    for(int pos = init_pos; pos >= final_pos-10; pos -= high_speed) {
+      myservo.write(pos);
+      delay(40);
+    }
+    for(int pos = final_pos-10; pos >= final_pos; pos -= slow_speed) {
+      myservo.write(pos);
+      delay(20);
+    }
+  }
+  else {
+    for(int pos = init_pos; pos <= final_pos-10; pos += high_speed) {
+      myservo.write(pos);
+      delay(40);
+    }
+    for(int pos = final_pos-10; pos <= final_pos; pos += slow_speed) {
+      myservo.write(pos);
+      delay(20);
+    }
+  }
+  return true;
+}
+
+void processArmMovement(void)
+{
+  digitalWrite(PUMP_PIN, HIGH); // the pump is ON
+  delay(20);
+  arm_pos_feedback = arm_pos(REST, PICK, FAST, SLOW); // arm picks up bottle
+  delay(20);
+  arm_pos_feedback = false;
+  arm_pos_feedback = arm_pos(PICK, DROP, FAST, SLOW); // arm drops bottle
+  delay(20);
+  digitalWrite(PUMP_PIN, LOW); // the pump is OFF
+  delay(20);
+  arm_pos_feedback = false;
+  arm_pos_feedback = arm_pos(DROP, REST, FAST, SLOW); // arm returns to rest position
+  delay(20);
+}
 
 
 /*
@@ -241,6 +305,7 @@ void processUltrasonicSensors(void)
 void setup()
 {
   setupMotors(); // init. motors
+  setupArm(); // init. arm
 
   pinMode(LED_BUILTIN, OUTPUT);
   nh.initNode();
@@ -270,4 +335,9 @@ void loop()
   
   // process all ultrasonic sensors for which the waiting time is over
   processUltrasonicSensors();
+
+  if(arm_pos_command) {
+    processArmMovement();
+    arm_pos_command = false;
+  }
 }
