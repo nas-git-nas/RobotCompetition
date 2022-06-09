@@ -29,16 +29,24 @@ void DecisionMaker::init(Pose pose, ros::Time time)
 	sp_idx = 0;
 
 	cv::Point first_point;
+	cv::Point second_point;
+	cv::Point third_point;
 #ifdef DEBUG_FAKE_MAP
 	first_point.x = 500; // 550; //pose.position.x + 200;
-	first_point.y = 410; //200; //pose.position.y;
+	first_point.y = 200; //200; //pose.position.y;
 #else
-	first_point.x = pose.position.x + 200;
+	first_point.x = pose.position.x + 600;
 	first_point.y = pose.position.y;
+	second_point.x = pose.position.x + 600;
+	second_point.y = pose.position.y + 400;
+	third_point.x = pose.position.x;
+	third_point.y = pose.position.y;
 #endif
 
 	std::vector<cv::Point> first_round;
 	first_round.push_back(first_point);
+	first_round.push_back(second_point);
+	first_round.push_back(third_point);
 	
 	sps.push_back(first_round);
 	
@@ -46,6 +54,8 @@ void DecisionMaker::init(Pose pose, ros::Time time)
 	start_time = time;
 	start_position = pose.position;
 	nb_collected_bottles = 0;
+	nb_collected_fails = 0;
+	force_exploring = 0;
 }
 
 
@@ -57,8 +67,6 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 	// reset command
 	resetCommand(command);
 
-	//TODO: add watchdogs
-
 	switch(dm_state) {
 		case DM_STATE_IDL: {
 			ROS_WARN("DM::stateMachine: idl idl idl idl idl idl idl idl idl idl idl idl idl idl idl");
@@ -67,7 +75,6 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 			
 		case DM_STATE_EXPLORE: {
 			explore(pose, map, bd, command);
-			//dm_state = DM_STATE_EXPLORE;
 		} break;
 			
 		case DM_STATE_APPROACH: {
@@ -77,7 +84,6 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 		case DM_STATE_PICKUP: {
 			ROS_INFO("dm::stateMachine: pick up bottle state");
 			dm_state = DM_STATE_IDL;
-			//pickup(bd, command);
 		} break;
 			
 		case DM_STATE_RETURN: {
@@ -97,9 +103,55 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 
 void DecisionMaker::verifyTime(void)
 {
+	// init. watchdog
+	static ros::Time watchdog_change_state_time = ros::Time::now();
+	static uint8_t watchdog_previous_state = DM_STATE_IDL;
+	
+	// update watchdog
+	if(unsigned(watchdog_change_state_time) != unsigned(dm_state)) {
+		watchdog_change_state_time = ros::Time::now();
+		watchdog_previous_state = dm_state;
+	}
+	
+	// verify watchdog (if state machine is stuck in a state)
+	ros::Duration watchdog_duration = ros::Time::now()-watchdog_change_state_time;
+	if(watchdog_duration.toSec() > DM_WATCHDOG_TIME) {
+		switch(dm_state) {
+			case DM_STATE_IDL: {
+				dm_state = DM_STATE_IDL;
+			} break;
+				
+			case DM_STATE_EXPLORE: {
+				dm_state = DM_STATE_EXPLORE;
+				force_exploring = false;
+				nb_collected_fails = 0;
+			} break;
+				
+			case DM_STATE_APPROACH: {
+				dm_state = DM_STATE_EXPLORE;
+			} break;
+				
+			case DM_STATE_PICKUP: {
+				dm_state = DM_STATE_EXPLORE;
+			} break;
+				
+			case DM_STATE_RETURN: {
+				dm_state = DM_STATE_RETURN;
+			} break;
+				
+			case DM_STATE_EMPTY: {
+				dm_state = DM_STATE_EXPLORE;
+			} break;
+				
+			default:
+				dm_state = DM_STATE_IDL;
+		}	
+	}
+
+	// verify if it is time to return
 	ros::Duration delta_time = ros::Time::now()-start_time;
-	if(delta_time.toSec() > 120) {
-		dm_state = DM_STATE_IDL;		
+	if(delta_time.toSec() > DM_RETURN_TIME) {
+		dm_state = DM_STATE_RETURN;		
 	}
 }
 
@@ -119,14 +171,16 @@ void DecisionMaker::resetCommand(Command &command)
 
 void DecisionMaker::explore(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
-	// verify if bottle was detected
-	Bottle bottle = bd.getBestBottle();
-	if(bottle.nb_meas >= DM_BOTTLE_NB_MEAS_THR) {
-		if(DM_VERBOSE_EXPLORE) {
-			ROS_INFO("DM::explore: go to approach state");
+	if(!force_exploring) {
+		// verify if bottle was detected
+		Bottle bottle = bd.getBestBottle();
+		if(bottle.nb_meas >= DM_BOTTLE_NB_MEAS_THR) {
+			if(DM_VERBOSE_EXPLORE) {
+				ROS_INFO("DM::explore: go to approach state");
+			}
+			dm_state = DM_STATE_APPROACH;
+			return;
 		}
-		dm_state = DM_STATE_APPROACH;
-		return;
 	}
 
 	// verify if current set point is reached and update indices if necessary
@@ -137,7 +191,7 @@ void DecisionMaker::explore(Pose pose, Map &map, BottleDetection &bd, Command &c
 	
 	// verify if current set point is reachable
 	cv::Mat map_dilated = map.getMapDilated();
-	while(map_dilated.at<uint8_t>(sps[r_idx][sp_idx].x, sps[r_idx][sp_idx].y) == 0) {
+	while(unsigned(map_dilated.at<uint8_t>(sps[r_idx][sp_idx].x, sps[r_idx][sp_idx].y)) == 0) {
 		int error_x = sps[r_idx][sp_idx].x - pose.position.x;
 		int error_y = sps[r_idx][sp_idx].y - pose.position.y;		
 		float theta = limitAngle(atan2f(error_y, error_x));
@@ -197,7 +251,7 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	
 	// verify if optimal position is reachable
 	cv::Mat map_dilated = map.getMapDilated();
-	if(map_dilated.at<uint8_t>(opt_position.x, opt_position.y) == 0) {
+	if(unsigned(map_dilated.at<uint8_t>(opt_position.x, opt_position.y)) == 0) {
 		bd.clearRecordedBottles();
 		dm_state = DM_STATE_EXPLORE;
 		
@@ -266,6 +320,11 @@ void DecisionMaker::pickup(BottleDetection &bd, Command &command)
 				nb_collected_bottles += 1;
 			} else {
 				dm_state = DM_STATE_APPROACH;
+				nb_collected_fails += 1;
+				
+				if(nb_collected_fails >= DM_PICKUP_MAX_NB_FAILS) {
+					force_exploring = true;
+				}
 			}
 			
 			// change pickup state

@@ -29,13 +29,17 @@
 #define DM_PICKUP_STATE_START			0
 #define DM_PICKUP_STATE_MOVE			1
 #define DM_PICKUP_STATE_VERIFY		3
+#define DM_PICKUP_MAX_NB_FAILS   	3
 
 #define DM_RETURN_STATE_GO_BACK		0
 #define DM_RETURN_STATE_TURN			1
 
 #define DM_EMPTY_STATE_START			0	
 #define DM_EMPTY_STATE_MOVE			1
-#define DM_EMPTY_MOVE_DURATION		5 // in s	
+#define DM_EMPTY_MOVE_DURATION		5 // in s
+
+#define DM_RETURN_TIME					500 // in s	
+#define DM_WATCHDOG_TIME				30
 
 
 
@@ -62,7 +66,9 @@ class DecisionMaker
 		ros::Time start_time;
 		cv::Point start_position;
 		Bottle pickup_bottle;
-		uint8_t nb_collected_bottles;
+		uint8_t nb_collected_bottles = 0;
+		uint8_t nb_collected_fails = 0;
+		bool force_exploring = 0;
 		
 		/*** CLASSES ***/
 		VisibilityGraph visibility_graph;

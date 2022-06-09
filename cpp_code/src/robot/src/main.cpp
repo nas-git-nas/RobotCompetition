@@ -118,11 +118,10 @@ int main(int argc, char **argv)
   		dm.stateMachine(pose, map, bd, command);
   		
   		// send command to arduino
-  		//sendCommandSRV(client_command, command);
+  		sendCommandSRV(client_command, command);
 
 		// send log to windows
   		windowsLogSRV(windows_pub, pose);
-
   		
   		// make one ros cycle
 		ros::spinOnce();
@@ -143,8 +142,9 @@ void mapCB(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 
 void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 {
+
+
 	std::array<int,BD_NB_SENSORS> meas;
-	
 	for(int i=0; i<BD_NB_SENSORS; i++) {
 		meas[i] = msg->data[i];
 		
@@ -152,7 +152,6 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 			ROS_INFO_STREAM("main::arduinoCB::US[" << i << "]: " << meas[i]);
 		}
 	}
-	
 	// calc. threhsolded and dilated map
 	/*if(!map.preprocessData()) {
 		ROS_ERROR("gpp::map::preprocessData");

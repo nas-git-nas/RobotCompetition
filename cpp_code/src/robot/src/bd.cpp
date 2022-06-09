@@ -88,11 +88,12 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 		return bottles;
 	}
 	
-	cv::imwrite("map_bd.jpg", map_bottle);
-	ROS_INFO_STREAM("type: " << map_bottle.type());
-	
+	/*cv::imwrite("map_bd.jpg", map_bottle);
+	ROS_INFO_STREAM("type: " << map_bottle.type());	
 	std::cout << "--map start" << std::endl << map_bottle << std::endl 
 				 << "--map end" << std::endl;
+	ROS_INFO_STREAM("particular: " << map_bottle.at<uint8_t>(10,10));
+	ROS_INFO_STREAM("particular: " << unsigned(map_bottle.at<uint8_t>(10,10)));*/
 	
 	// verify if there is an object and if the object is a bottle or an obstacle
 	for(int i=0; i<BD_NB_SENSORS; i++) {
@@ -117,12 +118,17 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 		// verify if object is on map (it is an obstacle)
 		bool object_on_map = false;
 		for(int k=0; k<2*BD_SEARCH_RANGE; k++) {
+		
+			// outside map
+			if(k<0 || k>MAP_SIZE-1) { continue; }
+			
 			for( int l=0; l<2*BD_SEARCH_RANGE; l++) {
+			
+				// outside map
+				if(l<0 || l>MAP_SIZE-1) { continue; }
 				
-				//ROS_INFO_STREAM(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k,
-							//										object.y-BD_SEARCH_RANGE+1));
-				if(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k, 
-										 		  object.y-BD_SEARCH_RANGE+l) == 0) {
+				if(unsigned(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k, 
+										 		  			  object.y-BD_SEARCH_RANGE+l)) == 0) {
 					object_on_map = true;
 					break;
 				}
