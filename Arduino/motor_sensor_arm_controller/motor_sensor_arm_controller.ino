@@ -284,7 +284,7 @@ bool arm_pos(int init_pos, int final_pos, int high_speed, int slow_speed) {
 
 void processArmMovement(void)
 {
-  digitalWrite(PUMP_PIN, HIGH); // the pump is ON
+  //digitalWrite(PUMP_PIN, HIGH); // the pump is ON
   delay(20);
   arm_pos_feedback = arm_pos(REST, PICK, FAST, SLOW); // arm picks up bottle
   delay(500);
@@ -337,9 +337,8 @@ void loop()
   processUltrasonicSensors();
 
 
-  /*arm_pos_command = false;
   if(arm_pos_command) {
     processArmMovement();
     arm_pos_command = false;
-  }*/
+  }
 }
