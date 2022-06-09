@@ -50,7 +50,7 @@
 
 
 // bd.cpp
-#define BD_VERBOSE_CALC 				true
+#define BD_VERBOSE_CALC 				false
 #define BD_VERBOSE_SET_ULTRASOUND	false
 
 #define BD_ULTRASOUND_MAX_DISTANCE 50
@@ -60,16 +60,18 @@
 #define DM_VERBOSE_GPP 					false
 #define DM_VERBOSE_BD					true
 #define DM_VERBOSE_EXPLORE				true
+#define DM_VERBOSE_WATCHDOG			true
 
 #define DM_COMMAND_ARM_REST 		0
 #define DM_COMMAND_BASKET_REST 	0
 
 #define DM_STATE_IDL 		0
 #define DM_STATE_EXPLORE 	1
-#define DM_STATE_APPROACH	2
-#define DM_STATE_PICKUP		3
-#define DM_STATE_RETURN		4
-#define DM_STATE_EMPTY		5
+#define DM_STATE_MOVE		2
+#define DM_STATE_APPROACH	3
+#define DM_STATE_PICKUP		4
+#define DM_STATE_RETURN		5
+#define DM_STATE_EMPTY		6
 
 
 // general

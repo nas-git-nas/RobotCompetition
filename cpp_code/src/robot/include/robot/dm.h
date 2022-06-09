@@ -23,7 +23,9 @@
 #define DM_SP_CHANGE 5 //cm, how much set point should be moved towards robot if it is not reachable
 
 #define DM_BOTTLE_NB_MEAS_THR 1
-#define DM_RECYCLING_OFFSET			20	
+#define DM_RECYCLING_OFFSET			20
+
+
 
 
 #define DM_PICKUP_STATE_START			0
@@ -38,9 +40,11 @@
 #define DM_EMPTY_STATE_MOVE			1
 #define DM_EMPTY_MOVE_DURATION		5 // in s
 
-#define DM_RETURN_TIME					500 // in s	
-#define DM_WATCHDOG_TIME				30
 
+#define DM_WATCHDOG_MOVE				10
+#define DM_WATCHDOG_APPROACH			30
+#define DM_WATCHDOG_PICKUP				30
+#define DM_WATCHDOG_END					500 // in s	
 
 
 // class containing map
@@ -68,7 +72,6 @@ class DecisionMaker
 		Bottle pickup_bottle;
 		uint8_t nb_collected_bottles = 0;
 		uint8_t nb_collected_fails = 0;
-		bool force_exploring = 0;
 		
 		/*** CLASSES ***/
 		VisibilityGraph visibility_graph;
@@ -76,12 +79,15 @@ class DecisionMaker
 
 		
 		/*** FUNCTIONS ***/
-		void verifyTime(void);
+		void watchdog(void);
 		void explore(Pose pose, Map &map, BottleDetection &bd, Command &command);
+		void move(Pose pose, Map &map, Command &command);
 		void approach(Pose pose, Map &map, BottleDetection &bd, Command &command);
+		bool verifyHeading(BottleDetection &bd);
 		void pickup(BottleDetection &bd, Command &command);
 		void stateReturn(Pose pose, Map &map, Command &command);
 		void empty(Command &command);
+		bool updateSP(Pose pose, Map &map);
 		bool updateSPIndices(Pose pose);
 		void GPP(Pose pose, Map &map, cv::Point destination, Command &command);
 		int calcDistance(cv::Point p1, cv::Point p2);

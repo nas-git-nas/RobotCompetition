@@ -44,6 +44,7 @@ float basket_motor = 0;
 */
 void poseCB(const geometry_msgs::PoseStamped::ConstPtr& msg);
 void imuCB(const std_msgs::Float32MultiArray::ConstPtr& msg);
+void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg);
 
 /*
 * ----- SERVICE FUNCTIONS -----
@@ -78,6 +79,7 @@ int main(int argc, char **argv)
 	// subscribe to topics
 	ros::Subscriber sub_pose = n.subscribe("slam_out_pose", 100, poseCB);
 	ros::Subscriber sub_imu = n.subscribe("imu_euler", 100, imuCB);
+	ros::Subscriber sub_arduino = n.subscribe("ard2rasp", 100, arduinoCB);
 	
 	// publisher of topics
 	ros::Publisher pub_motor_vel = 
@@ -169,6 +171,15 @@ void imuCB(const std_msgs::Float32MultiArray::ConstPtr& msg)
 	if(abs(gyro_data[2])<2) {
 		turn_hector_off = false;
 	}
+}
+
+void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
+{
+	std::array<int,LPP_NB_SENSORS> meas;
+	for(int i=0; i<LPP_NB_SENSORS; i++) {
+		meas[i] = msg->data[i];
+	}
+	lpp.set_meas(meas);
 }
 
 

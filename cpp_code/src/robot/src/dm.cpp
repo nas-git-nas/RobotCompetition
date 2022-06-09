@@ -55,14 +55,13 @@ void DecisionMaker::init(Pose pose, ros::Time time)
 	start_position = pose.position;
 	nb_collected_bottles = 0;
 	nb_collected_fails = 0;
-	force_exploring = 0;
 }
 
 
 void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
 	// verifyTime
-	verifyTime();
+	//verifyTime();
 
 	// reset command
 	resetCommand(command);
@@ -75,6 +74,10 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 			
 		case DM_STATE_EXPLORE: {
 			explore(pose, map, bd, command);
+		} break;
+		
+		case DM_STATE_MOVE: {
+			move(pose, map, command);
 		} break;
 			
 		case DM_STATE_APPROACH: {
@@ -101,56 +104,69 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 	}
 }
 
-void DecisionMaker::verifyTime(void)
+void DecisionMaker::watchdog(void)
 {
 	// init. watchdog
-	static ros::Time watchdog_change_state_time = ros::Time::now();
-	static uint8_t watchdog_previous_state = DM_STATE_IDL;
+	static ros::Time watchdog_time;
+	static uint8_t watchdog_state = DM_STATE_IDL;
 	
 	// update watchdog
-	if(unsigned(watchdog_change_state_time) != unsigned(dm_state)) {
-		watchdog_change_state_time = ros::Time::now();
-		watchdog_previous_state = dm_state;
+	if(unsigned(watchdog_state) != unsigned(dm_state)) {
+		watchdog_time = ros::Time::now();
+		watchdog_state = dm_state;
 	}
+	ros::Duration watchdog_duration = ros::Time::now()-watchdog_time;
 	
-	// verify watchdog (if state machine is stuck in a state)
-	ros::Duration watchdog_duration = ros::Time::now()-watchdog_change_state_time;
-	if(watchdog_duration.toSec() > DM_WATCHDOG_TIME) {
-		switch(dm_state) {
-			case DM_STATE_IDL: {
-				dm_state = DM_STATE_IDL;
-			} break;
-				
-			case DM_STATE_EXPLORE: {
+	// verify watchdog (if state machine is stuck in a state)	
+	switch(dm_state) {
+		case DM_STATE_IDL: {
+
+		} break;
+			
+		case DM_STATE_EXPLORE: {
+
+		} break;
+		
+		case DM_STATE_MOVE: {
+			if(watchdog_duration.toSec() > DM_WATCHDOG_MOVE) {
 				dm_state = DM_STATE_EXPLORE;
-				force_exploring = false;
-				nb_collected_fails = 0;
-			} break;
-				
-			case DM_STATE_APPROACH: {
+				if(DM_VERBOSE_WATCHDOG) {
+					ROS_WARN("dm::watchdog: move -> explore");
+				}
+			}
+		} break;
+			
+		case DM_STATE_APPROACH: {
+			if(watchdog_duration.toSec() > DM_WATCHDOG_APPROACH) {	
 				dm_state = DM_STATE_EXPLORE;
-			} break;
-				
-			case DM_STATE_PICKUP: {
+				if(DM_VERBOSE_WATCHDOG) {
+					ROS_WARN("dm::watchdog: approach -> explore");
+				}
+			}
+		} break;
+			
+		case DM_STATE_PICKUP: {
+			if(watchdog_duration.toSec() > DM_WATCHDOG_PICKUP) {	
 				dm_state = DM_STATE_EXPLORE;
-			} break;
-				
-			case DM_STATE_RETURN: {
-				dm_state = DM_STATE_RETURN;
-			} break;
-				
-			case DM_STATE_EMPTY: {
-				dm_state = DM_STATE_EXPLORE;
-			} break;
-				
-			default:
-				dm_state = DM_STATE_IDL;
-		}	
-	}
+				if(DM_VERBOSE_WATCHDOG) {
+					ROS_WARN("dm::watchdog: pickup -> explore");
+				}
+			}
+		} break;
+			
+		case DM_STATE_RETURN: {
+		
+		} break;
+			
+		case DM_STATE_EMPTY: {
+
+		} break;
+			
+	}	
 
 	// verify if it is time to return
 	ros::Duration delta_time = ros::Time::now()-start_time;
-	if(delta_time.toSec() > DM_RETURN_TIME) {
+	if(delta_time.toSec() > DM_WATCHDOG_END) {
 		dm_state = DM_STATE_RETURN;		
 	}
 }
@@ -171,60 +187,64 @@ void DecisionMaker::resetCommand(Command &command)
 
 void DecisionMaker::explore(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
-	if(!force_exploring) {
-		// verify if bottle was detected
-		Bottle bottle = bd.getBestBottle();
-		if(bottle.nb_meas >= DM_BOTTLE_NB_MEAS_THR) {
-			if(DM_VERBOSE_EXPLORE) {
-				ROS_INFO("DM::explore: go to approach state");
-			}
-			dm_state = DM_STATE_APPROACH;
-			return;
+	// verify if bottle was detected
+	Bottle bottle = bd.getBestBottle();
+	if(bottle.nb_meas >= DM_BOTTLE_NB_MEAS_THR) {
+		dm_state = DM_STATE_APPROACH;
+		
+		if(DM_VERBOSE_EXPLORE) {
+			ROS_INFO("DM::explore: go to approach state");
 		}
-	}
-
-	// verify if current set point is reached and update indices if necessary
-	if(updateSPIndices(pose)) {
-		dm_state = DM_STATE_RETURN;
 		return;
 	}
 	
-	// verify if current set point is reachable
-	cv::Mat map_dilated = map.getMapDilated();
-	while(unsigned(map_dilated.at<uint8_t>(sps[r_idx][sp_idx].x, sps[r_idx][sp_idx].y)) == 0) {
-		int error_x = sps[r_idx][sp_idx].x - pose.position.x;
-		int error_y = sps[r_idx][sp_idx].y - pose.position.y;		
-		float theta = limitAngle(atan2f(error_y, error_x));
-		
-		// move set point by DM_SP_CHANGE in direction of robot
-		sps[r_idx][sp_idx].x -= cos(theta)*DM_SP_CHANGE;
-		sps[r_idx][sp_idx].y -= sin(theta)*DM_SP_CHANGE;
-		
-		// verify if current set point is reached and update indices if necessary
-		if(updateSPIndices(pose)) {
-			dm_state = DM_STATE_RETURN;
-			return;
-		}
+	// update SP, if true the last set point is reached
+	if(updateSP(pose, map)) {
+		dm_state = DM_STATE_RETURN;
+		return;
 	}
 	
 	// calc. trajectory
 	GPP(pose, map, sps[r_idx][sp_idx], command);
 }
 
+void DecisionMaker::move(Pose pose, Map &map, Command &command)
+{	
+	// update SP, if true the last set point is reached
+	if(updateSP(pose, map)) {
+		dm_state = DM_STATE_RETURN;
+		return;
+	}
+	
+	// calc. trajectory
+	GPP(pose, map, sps[r_idx][sp_idx], command);
+}
+
+
 void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
 	// get best bottle
 	Bottle bottle = bd.getBestBottle();
 	
-	// verify if point is reasonable
+	// verify if a bottle is detected
 	if(bottle.position.x==0 && bottle.position.y==0) {
-		//TODO: add more condition and action
 		dm_state = DM_STATE_EXPLORE;
 
 		if(DM_VERBOSE_BD) {
 			ROS_INFO("DM::approach: no bottles detected");
 		}
 		return;
+	}
+	
+	// verify if point is reasonable
+	if(bottle.position.x<0 || bottle.position.x>MAP_SIZE 
+		|| bottle.position.y<0 || bottle.position.y>MAP_SIZE) {
+		dm_state = DM_STATE_EXPLORE;
+
+		if(DM_VERBOSE_BD) {
+			ROS_INFO("DM::approach: best bottle is not reasonable");
+		}
+		return;	
 	}
 	
 	// calc. distance and angle between bottle and robot
@@ -240,13 +260,17 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	
 	// verify if optimal position is reached
 	if(abs(distance-LPP_ARM_LENGTH)<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
-		dm_state = DM_STATE_PICKUP;
-		pickup_bottle = bottle;
-		
-		if(DM_VERBOSE_BD) {
-			ROS_INFO("DM::approach: opt. position is reached!");
+	
+		// continue only if bottle is well centered
+		if(verifyHeading(bd)) {
+			dm_state = DM_STATE_PICKUP;
+			pickup_bottle = bottle;
+			
+			if(DM_VERBOSE_BD) {
+				ROS_INFO("DM::approach: opt. position is reached!");
+			}
+			return;
 		}
-		return;
 	}
 	
 	// verify if optimal position is reachable
@@ -280,7 +304,34 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	}
 }
 
+bool DecisionMaker::verifyHeading(BottleDetection &bd)
+{
+	std::array<int,BD_NB_SENSORS> meas = bd.getBottleMeas();
+	
+	int left_meas = 0;
+	int right_meas = 0;
+	if(meas[1]>0 && meas[1]<LPP_MEAS_HEADING_THR) {
+		left_meas += 1;
+	}
+	if(meas[2]>0 && meas[2]<LPP_MEAS_HEADING_THR) {
+		left_meas += 1;
+	}
+	if(meas[4]>0 && meas[4]<LPP_MEAS_HEADING_THR) {
+		right_meas += 1;
+	}
+	if(meas[5]>0 && meas[5]<LPP_MEAS_HEADING_THR) {
+		right_meas += 1;
+	}
+	
+	// bottle is centered
+	if(left_meas == right_meas) {
+		return true;
+	}
+	
+	// bottle is not yet centered
+	return false;
 
+}
 
 void DecisionMaker::pickup(BottleDetection &bd, Command &command)
 {
@@ -322,9 +373,7 @@ void DecisionMaker::pickup(BottleDetection &bd, Command &command)
 				dm_state = DM_STATE_APPROACH;
 				nb_collected_fails += 1;
 				
-				if(nb_collected_fails >= DM_PICKUP_MAX_NB_FAILS) {
-					force_exploring = true;
-				}
+				//TODO: count nb. of fails
 			}
 			
 			// change pickup state
@@ -405,22 +454,47 @@ void DecisionMaker::empty(Command &command)
 	}
 }
 
-bool DecisionMaker::updateSPIndices(Pose pose)
+bool DecisionMaker::updateSP(Pose pose, Map &map)
 {
-	// verify if current set point is reached
+	// verify if current set point is reached and update indices if necessary
 	if(calcDistance(pose.position, sps[r_idx][sp_idx]) < DM_SP_REACHED_THR) {	
-		if(sp_idx < sps[r_idx].size()-1) { // there is a next set point in same round
-			sp_idx += 1;
-			return false;
-		} else if(r_idx < sps.size()-1) { // there is a no set point in same round, but a next round
-			sp_idx = 0;
-			r_idx += 1;
-			return false;
-		} else { // there is no next round => return home
-			sp_idx = 0;
-			r_idx = 0;
+		if(updateSPIndices(pose)) {
 			return true;
 		}
+	}
+
+	
+	// verify if current set point is reachable
+	cv::Mat map_dilated = map.getMapDilated();
+	while(unsigned(map_dilated.at<uint8_t>(sps[r_idx][sp_idx].x, sps[r_idx][sp_idx].y)) == 0) {
+		//TODO: test when SP is in obstacle
+		/*int error_x = sps[r_idx][sp_idx].x - pose.position.x;
+		int error_y = sps[r_idx][sp_idx].y - pose.position.y;		
+		float theta = limitAngle(atan2f(error_y, error_x));
+		
+		// move set point by DM_SP_CHANGE in direction of robot
+		sps[r_idx][sp_idx].x -= cos(theta)*DM_SP_CHANGE;
+		sps[r_idx][sp_idx].y -= sin(theta)*DM_SP_CHANGE;*/
+		
+		// update to next set point
+		if(updateSPIndices(pose)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool DecisionMaker::updateSPIndices(Pose pose)
+{
+	if(sp_idx < sps[r_idx].size()-1) { // there is a next set point in same round
+		sp_idx += 1;
+	} else if(r_idx < sps.size()-1) { // there is a no set point in same round, but a next round
+		sp_idx = 0;
+		r_idx += 1;
+	} else { // there is no next round => return home
+		sp_idx = 0;
+		r_idx = 0;
+		return true;
 	}
 	return false;
 }

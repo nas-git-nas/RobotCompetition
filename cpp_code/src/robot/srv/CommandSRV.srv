@@ -6,5 +6,6 @@ uint8 stop_motor
 float32 arm_angle
 float32 basket_angle
 bool air_pump
+uint8[7] meas
 ---
 

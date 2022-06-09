@@ -30,6 +30,11 @@
 #define APPROACH_LOWER_THRESHOLD 0.0873 // in rad, 5°
 #define LPP_ARM_LENGTH 44 // in cm
 
+#define LPP_NB_SENSORS 7
+#define LPP_MEAS_HEADING_ANGLE 0.0873 // rad, turn 10 degrees to correct heading 
+#define LPP_MEAS_HEADING_THR 30 // in cm, above this value measurement is not taken into
+										 // account when doing heading correction
+
 #define VEL_TURN_MAX 1.0 // 3.5// in rad/s
 #define VEL_TURN_MIN 0.7 // in rad/s
 #define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
@@ -53,6 +58,7 @@ class LPP
 		void setIMUData(float *gyro_data);
 		void stopMotors(void);
 		void set_dm_state(uint8_t new_state);
+		void set_meas(std::array<int,LPP_NB_SENSORS> new_meas);
 		std::array<float,4> getMotorVelocity(void);
 		std::array<float,3> getPose(void);
 		std::vector<cv::Point> getSetPoints(void);
@@ -68,6 +74,7 @@ class LPP
 		bool stop_robot = true;
 		float gyro[3] = {0,0,0};
 		uint8_t dm_state;
+		std::array<int,LPP_NB_SENSORS> meas;
 		
 		/*** FUNCTIONS ***/
 		void updateMotorVelocity(void);

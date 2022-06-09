@@ -38,6 +38,11 @@ void LPP::set_dm_state(uint8_t new_state)
 	dm_state = new_state;
 }
 
+void LPP::set_meas(std::array<int,LPP_NB_SENSORS> new_meas)
+{
+ meas = new_meas;
+}
+
 void LPP::stopMotors(void)
 {
 	robotStop();
@@ -193,8 +198,31 @@ void LPP::updateApproachVelocity(void)
 	
 	// verify if bottle is at optimal position
 	if(abs(distance-LPP_ARM_LENGTH)<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
-		stop_robot = true;
-		robotStop();
+	
+		int left_meas = 0;
+		int right_meas = 0;
+		if(meas[1]>0 && meas[1]<LPP_MEAS_HEADING_THR) {
+			left_meas += 1;
+		}
+		if(meas[2]>0 && meas[2]<LPP_MEAS_HEADING_THR) {
+			left_meas += 1;
+		}
+		if(meas[4]>0 && meas[4]<LPP_MEAS_HEADING_THR) {
+			right_meas += 1;
+		}
+		if(meas[5]>0 && meas[5]<LPP_MEAS_HEADING_THR) {
+			right_meas += 1;
+		}
+		
+		if(left_meas > right_meas) {
+			robotTurn(10);
+		} else if(left_meas < right_meas) {
+			robotTurn(-10);
+		} else {
+			stop_robot = true;
+			robotStop();		
+		}		
+
 		return;
 	}	
 

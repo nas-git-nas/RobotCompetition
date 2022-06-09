@@ -16,7 +16,7 @@
 void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat map_bottle, 
 												Pose pose)
 {
-	// verify if measurements are false
+	// verify if measurements are false and save it
 	for(int i=0; i<BD_NB_SENSORS; i++) {
 		if(meas[i]>BD_ULTRASOUND_MAX_DISTANCE || meas[i]<0) {
 			meas[i] = 0;
@@ -24,6 +24,7 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat 
 				ROS_WARN("main::arduinoCB: measurement out of range");
 			}
 		}
+		bottle_meas[i] = 0; // reset array
 	}
 
 	// calc. position of measured bottles
@@ -70,15 +71,21 @@ Bottle BottleDetection::getBestBottle(void)
 	return recorded_bottles[most_meas_index];
 }
 
+std::array<int,BD_NB_SENSORS> BottleDetection::getBottleMeas(void)
+{
+	return bottle_meas;
+}
+
 void BottleDetection::clearRecordedBottles(void)
 {
 	recorded_bottles.clear();
 }
 
-std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pose, 		
+std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pose,
 																	 std::array<int,BD_NB_SENSORS> meas)
 {
 	std::vector<Bottle> bottles;
+
 	
 	// verify if there exists a map
 	if(map_bottle.empty()) {
@@ -143,6 +150,9 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 			temp_bottle.nb_meas = 1;
 			temp_bottle.updated = true;
 			bottles.push_back(temp_bottle);
+			
+			// save measurment if it is no obstacle
+			bottle_meas[i] = meas[i]; 
 		}
 		
 		if(BD_VERBOSE_CALC) {
