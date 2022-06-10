@@ -34,6 +34,14 @@ namespace robot
       _path_type * path;
       typedef float _heading_type;
       _heading_type heading;
+      typedef uint16_t _bottle_x_type;
+      _bottle_x_type bottle_x;
+      typedef uint16_t _bottle_y_type;
+      _bottle_y_type bottle_y;
+      typedef uint16_t _bottle_nb_meas_type;
+      _bottle_nb_meas_type bottle_nb_meas;
+      typedef uint16_t _state_type;
+      _state_type state;
 
     WindowsMsg():
       nb_nodes(0),
@@ -42,7 +50,11 @@ namespace robot
       nodes_y_length(0), st_nodes_y(), nodes_y(nullptr),
       nb_path_nodes(0),
       path_length(0), st_path(), path(nullptr),
-      heading(0)
+      heading(0),
+      bottle_x(0),
+      bottle_y(0),
+      bottle_nb_meas(0),
+      state(0)
     {
     }
 
@@ -105,6 +117,18 @@ namespace robot
       *(outbuffer + offset + 2) = (u_heading.base >> (8 * 2)) & 0xFF;
       *(outbuffer + offset + 3) = (u_heading.base >> (8 * 3)) & 0xFF;
       offset += sizeof(this->heading);
+      *(outbuffer + offset + 0) = (this->bottle_x >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->bottle_x >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->bottle_x);
+      *(outbuffer + offset + 0) = (this->bottle_y >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->bottle_y >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->bottle_y);
+      *(outbuffer + offset + 0) = (this->bottle_nb_meas >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->bottle_nb_meas >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->bottle_nb_meas);
+      *(outbuffer + offset + 0) = (this->state >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (this->state >> (8 * 1)) & 0xFF;
+      offset += sizeof(this->state);
       return offset;
     }
 
@@ -184,11 +208,23 @@ namespace robot
       u_heading.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
       this->heading = u_heading.real;
       offset += sizeof(this->heading);
+      this->bottle_x =  ((uint16_t) (*(inbuffer + offset)));
+      this->bottle_x |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->bottle_x);
+      this->bottle_y =  ((uint16_t) (*(inbuffer + offset)));
+      this->bottle_y |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->bottle_y);
+      this->bottle_nb_meas =  ((uint16_t) (*(inbuffer + offset)));
+      this->bottle_nb_meas |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->bottle_nb_meas);
+      this->state =  ((uint16_t) (*(inbuffer + offset)));
+      this->state |= ((uint16_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      offset += sizeof(this->state);
      return offset;
     }
 
     virtual const char * getType() override { return "robot/WindowsMsg"; };
-    virtual const char * getMD5() override { return "85aeb599522fe71a0ec6f3093fc04d4f"; };
+    virtual const char * getMD5() override { return "31d83d5194c04b2dbc0f59eb93cfe0d7"; };
 
   };
 
