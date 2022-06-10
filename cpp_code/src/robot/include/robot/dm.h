@@ -26,12 +26,8 @@
 #define DM_RECYCLING_OFFSET			20
 
 
-
-
-#define DM_PICKUP_STATE_START			0
-#define DM_PICKUP_STATE_MOVE			1
-#define DM_PICKUP_STATE_VERIFY		3
 #define DM_PICKUP_MAX_NB_FAILS   	3
+#define DM_PICKUP_NB_MEAS_THR			1
 
 #define DM_RETURN_STATE_GO_BACK		0
 #define DM_RETURN_STATE_TURN			1
@@ -43,7 +39,7 @@
 
 #define DM_WATCHDOG_MOVE				10
 #define DM_WATCHDOG_APPROACH			30
-#define DM_WATCHDOG_PICKUP				30
+#define DM_WATCHDOG_PICKUP				7
 #define DM_WATCHDOG_END					500 // in s	
 
 
@@ -84,7 +80,8 @@ class DecisionMaker
 		void move(Pose pose, Map &map, Command &command);
 		void approach(Pose pose, Map &map, BottleDetection &bd, Command &command);
 		bool verifyHeading(BottleDetection &bd);
-		void pickup(BottleDetection &bd, Command &command);
+		void pickupSend(Command &command);
+		void pickupVerify(BottleDetection &bd, Command &command);
 		void stateReturn(Pose pose, Map &map, Command &command);
 		void empty(Command &command);
 		bool updateSP(Pose pose, Map &map);

@@ -10,14 +10,16 @@
 #include <opencv2/imgproc.hpp>
 
 #include "main.h"
+#include "map.h"
 
 #ifndef BD_H // include header file only once
 #define BD_H
 
 #define BD_NB_SENSORS 7
-#define BD_UPDATE_TIME_LIMIT 2 // in s, ultrasonic measurement must be younger
-#define BD_SEARCH_RANGE 20 // search in this environment for obstacles
-								  // [x/y - BD_SEARCH_RANGE, x/y + BD_SEARCH_RANGE]
+#define BD_SEARCH_NEIGHBORHOUD 20 // search in this environment for obstacles
+								  			// [x/y - BD_SEARCH_RANGE, x/y + BD_SEARCH_RANGE]
+#define BD_SEARCH_NB_PIXEL_THR 1 // in neighborhoud there have to be at least this amount of pixels
+											// such that it is concidered as occupied
 #define BD_BOTTLE_THR 30 // in cm, maximal distance at which two measurements are
 								// considered to be the same bottle
 #define BD_NB_MEAS_MAX 30 // maximum number of measurements allowed
@@ -37,8 +39,8 @@ class BottleDetection
 
 		
 		/*** FUNCTIONS ***/
-		void setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat map_bottle, Pose pose);
-		Bottle getBestBottle(void);
+		void setUltrasound(std::array<int,BD_NB_SENSORS> meas, Map map, Pose pose);
+		Bottle getBestBottle(Map map);
 		std::array<int,BD_NB_SENSORS> getBottleMeas(void);
 		void clearRecordedBottles(void);
 
@@ -58,7 +60,7 @@ class BottleDetection
 																{2.0,-19.0,-1.5708} }; // most right one
 		
 		/*** FUNCTIONS ***/
-		std::vector<Bottle> calcNewBottles(cv::Mat map_bottle, Pose pose,
+		std::vector<Bottle> calcNewBottles(Map map, Pose pose,
 													  std::array<int,BD_NB_SENSORS> meas);
 		void addNewBottles(std::vector<Bottle> new_bottles);
 		void ageRecordedBottles(void);

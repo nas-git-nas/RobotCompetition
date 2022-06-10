@@ -5,3 +5,7 @@ uint16[] nodes_y
 uint16 nb_path_nodes
 uint16[] path
 float32 heading
+uint16 bottle_x
+uint16 bottle_y
+uint16 bottle_nb_meas
+uint16 state

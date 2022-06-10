@@ -9,14 +9,14 @@
 #define MAIN_H
 
 // debugging
-//#define DEBUG_FAKE_MAP
-//#define DEBUG_FAKE_MEAS
+#define DEBUG_FAKE_MAP
+#define DEBUG_FAKE_MEAS
 //#define DEBUG_WITHOUT_LPP
 
 // main.cpp
-#define MAIN_VERBOSE 					false
-#define MAIN_VERBOSE_BD 				true
-#define MAIN_VERBOSE_COMMAND 			false
+#define MAIN_VERBOSE 					true
+#define MAIN_VERBOSE_BD 				false
+#define MAIN_VERBOSE_COMMAND 			true
 
 // map.cpp
 #define MAP_VERBOSE_RAW_DATA 			false
@@ -50,8 +50,9 @@
 
 
 // bd.cpp
-#define BD_VERBOSE_CALC 				false
+#define BD_VERBOSE_CALC 				true
 #define BD_VERBOSE_SET_ULTRASOUND	false
+#define BD_VERBOSE_GET_BOTTLE			true
 
 #define BD_ULTRASOUND_MAX_DISTANCE 50
 
@@ -61,17 +62,21 @@
 #define DM_VERBOSE_BD					true
 #define DM_VERBOSE_EXPLORE				true
 #define DM_VERBOSE_WATCHDOG			true
+#define DM_VERBOSE_PICKUP				true
 
 #define DM_COMMAND_ARM_REST 		0
 #define DM_COMMAND_BASKET_REST 	0
 
-#define DM_STATE_IDL 		0
-#define DM_STATE_EXPLORE 	1
-#define DM_STATE_MOVE		2
-#define DM_STATE_APPROACH	3
-#define DM_STATE_PICKUP		4
-#define DM_STATE_RETURN		5
-#define DM_STATE_EMPTY		6
+#define DM_STATE_IDL 				0
+#define DM_STATE_EXPLORE 			1
+#define DM_STATE_MOVE				2
+#define DM_STATE_APPROACH			3
+#define DM_STATE_PICKUP_SEND		4
+#define DM_STATE_PICKUP_WAIT		5
+#define DM_STATE_PICKUP_VERIFY 	6
+#define DM_STATE_RETURN				7
+#define DM_STATE_EMPTY_SEND		8
+#define DM_STATE_EMPTY_WAIT		9
 
 
 // general

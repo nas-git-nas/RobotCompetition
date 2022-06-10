@@ -39,7 +39,7 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg);
 */
 Pose getPoseSRV(ros::ServiceClient &client_get_pose);
 void sendCommandSRV(ros::ServiceClient &client_command, Command &command);
-void windowsLogSRV(ros::Publisher& windows_pub, Pose pose);
+void windowsLogSRV(ros::Publisher& windows_pub, Pose pose, Command command);
 
 
 /*
@@ -102,14 +102,16 @@ int main(int argc, char **argv)
 
 	int counter = 0;
 	while(ros::ok()) {
-		if(MAIN_VERBOSE) {		
-  			ROS_INFO_STREAM("main::counter: " << counter << "\n");
+		if(MAIN_VERBOSE) {
+			std::cout << std::endl;		
+  			ROS_INFO_STREAM("main::counter: " << counter);
   		}
   		
 		// calc. threhsolded and dilated map
 		if(!map.preprocessData()) {
 			ROS_ERROR("main::preprocessData: failed");
 		}	
+  		
   		
 		// get current pose
 		pose = getPoseSRV(client_get_pose);
@@ -121,7 +123,8 @@ int main(int argc, char **argv)
   		sendCommandSRV(client_command, command);
 
 		// send log to windows
-  		windowsLogSRV(windows_pub, pose);
+  		windowsLogSRV(windows_pub, pose, command);
+  		
   		
   		// make one ros cycle
 		ros::spinOnce();
@@ -158,12 +161,12 @@ void arduinoCB(const std_msgs::Int16MultiArray::ConstPtr& msg)
 	}	*/
 
 	// update recorded measurements in BD if there are new ones
-	bd.setUltrasound(meas, map.getMapDilated(), pose);
+	bd.setUltrasound(meas, map, pose);
 
 	
 	
 	if(MAIN_VERBOSE_BD) {
-		Bottle bottle = bd.getBestBottle();
+		Bottle bottle = bd.getBestBottle(map);
 		ROS_INFO_STREAM("main::arduinoCB: best bottle = (" << bottle.position.x << "," 
 								<< bottle.position.y << ";" << bottle.nb_meas << ")");
 		ROS_INFO_STREAM("main::arduinoCB: pose = (" << pose.position.x << "," 
@@ -229,13 +232,14 @@ void sendCommandSRV(ros::ServiceClient &client_command, Command &command)
 	}	
 }
 
-void windowsLogSRV(ros::Publisher& windows_pub, Pose pose)
+void windowsLogSRV(ros::Publisher& windows_pub, Pose pose, Command command)
 {
 
 
 	std::vector<cv::Point> nodes = map.getNodes();
 	std::vector<int> polygons = map.getNodePolygon();
 	std::vector<int> path = dm.getShortestPath();
+	Bottle bottle = bd.getBestBottle(map);
 	
 	robot::WindowsMsg msg;
 
@@ -251,6 +255,12 @@ void windowsLogSRV(ros::Publisher& windows_pub, Pose pose)
 	for(int i=0; i<path.size(); i++) {
 		msg.path.push_back(path[i]);
 	}
+	
+	msg.bottle_x = bottle.position.x;
+	msg.bottle_y = bottle.position.y;
+	msg.bottle_nb_meas = bottle.nb_meas;
+	
+	msg.state = command.dm_state;
 	
 	msg.heading = pose.heading;
 

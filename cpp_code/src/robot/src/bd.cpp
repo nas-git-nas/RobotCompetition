@@ -12,8 +12,9 @@
 
 #include "main.h"
 #include "bd.h"
+#include "map.h"
 
-void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat map_bottle, 
+void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, Map map, 
 												Pose pose)
 {
 	// verify if measurements are false and save it
@@ -27,8 +28,12 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat 
 		bottle_meas[i] = 0; // reset array
 	}
 
+	// mask side sensors
+	meas[0] = 0;
+	meas[6] = 0;
+
 	// calc. position of measured bottles
-	std::vector<Bottle> new_bottles = calcNewBottles(map_bottle, pose, meas);
+	std::vector<Bottle> new_bottles = calcNewBottles(map, pose, meas);
 	
 	// add new bottles to recorded bottles vector and update it
 	addNewBottles(new_bottles);
@@ -50,7 +55,7 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, cv::Mat 
 	}
 }
 
-Bottle BottleDetection::getBestBottle(void)
+Bottle BottleDetection::getBestBottle(Map map)
 {
 	// if no bottles are recorded return nothing
 	if(recorded_bottles.empty()) {
@@ -68,6 +73,22 @@ Bottle BottleDetection::getBestBottle(void)
 			most_meas_index = i;
 		}
 	}				
+
+	// verify if best bottle is inside an obstacle
+	if(map.verifyBottleMapPoint(recorded_bottles[most_meas_index].position, BD_SEARCH_NEIGHBORHOUD,
+									 BD_SEARCH_NB_PIXEL_THR)) {
+		Bottle nothing;
+		nothing.position.x = 0;
+		nothing.position.y = 0;
+		nothing.nb_meas = 0;
+		
+		if(BD_VERBOSE_GET_BOTTLE) {
+			ROS_INFO("bd::getBestBottle: bottle is inside obstacle!");
+		}
+		return nothing;
+	}
+
+
 	return recorded_bottles[most_meas_index];
 }
 
@@ -81,19 +102,11 @@ void BottleDetection::clearRecordedBottles(void)
 	recorded_bottles.clear();
 }
 
-std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pose,
+std::vector<Bottle> BottleDetection::calcNewBottles(Map map, Pose pose,
 																	 std::array<int,BD_NB_SENSORS> meas)
 {
 	std::vector<Bottle> bottles;
 
-	
-	// verify if there exists a map
-	if(map_bottle.empty()) {
-		if(BD_VERBOSE_CALC) {
-			ROS_WARN("bd::calcBottlePosition: map does not exists");
-		}
-		return bottles;
-	}
 	
 	/*cv::imwrite("map_bd.jpg", map_bottle);
 	ROS_INFO_STREAM("type: " << map_bottle.type());	
@@ -121,44 +134,33 @@ std::vector<Bottle> BottleDetection::calcNewBottles(cv::Mat map_bottle, Pose pos
 		
 		// convert distance measurement to position in global reference frame
 		cv::Point object = convertMeasurement(i, pose, meas[i]);
+
+		//ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i << "] = (" << object.x << "," 
+		//							<< object.y << ")");
+
 		
-		// verify if object is on map (it is an obstacle)
-		bool object_on_map = false;
-		for(int k=0; k<2*BD_SEARCH_RANGE; k++) {
 		
-			// outside map
-			if(k<0 || k>MAP_SIZE-1) { continue; }
-			
-			for( int l=0; l<2*BD_SEARCH_RANGE; l++) {
-			
-				// outside map
-				if(l<0 || l>MAP_SIZE-1) { continue; }
-				
-				if(unsigned(map_bottle.at<uint8_t>(object.x-BD_SEARCH_RANGE+k, 
-										 		  			  object.y-BD_SEARCH_RANGE+l)) == 0) {
-					object_on_map = true;
-					break;
-				}
+		// verify if object is an obstacle
+		if(map.verifyBottleMapPoint(object, BD_SEARCH_NEIGHBORHOUD, BD_SEARCH_NB_PIXEL_THR)) {
+			if(BD_VERBOSE_CALC) {
+				ROS_INFO_STREAM("bd::calcBottlePosition: object is obstacle");
 			}
-			if(object_on_map) { break; }
-		}
-		
-		// add object to bottles vector if it is not on map
-		if(!object_on_map) {
-			Bottle temp_bottle;
-			temp_bottle.position = object;
-			temp_bottle.nb_meas = 1;
-			temp_bottle.updated = true;
-			bottles.push_back(temp_bottle);
-			
-			// save measurment if it is no obstacle
-			bottle_meas[i] = meas[i]; 
+			return bottles;
 		}
 		
 		if(BD_VERBOSE_CALC) {
-			ROS_INFO_STREAM("bd::calcBottlePosition: sensor[" << i 
-								 << "] is on map = " << object_on_map);
-		}	
+			ROS_INFO_STREAM("bd::calcBottlePosition: object is bottle");
+		}
+		
+		// add object to bottles vector if it is not on map
+		Bottle temp_bottle;
+		temp_bottle.position = object;
+		temp_bottle.nb_meas = 1;
+		temp_bottle.updated = true;
+		bottles.push_back(temp_bottle);
+		
+		// save measurment if it is no obstacle
+		bottle_meas[i] = meas[i]; 
 	}	
 	return bottles;
 }

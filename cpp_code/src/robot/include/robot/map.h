@@ -20,6 +20,8 @@
 #define MAP_BRICK_LENGTH 30 // cm
 #define MAP_BRICK_WIDTH 15 // cm
 #define MAP_DILATION_KERNEL 70 // cm, dilation/expansion of obstacles
+#define MAP_BOTTLE_KERNEL 30 // cm, dilation of obstacles for bottle map
+
 #define MAP_POLYGON_MIN_SIZE 200 // cm, min. size of polygon to be not ignored
 #define MAP_POLYGON_MAX_SIZE ((2*MAP_DILATION_KERNEL+MAP_BRICK_LENGTH) \
 										*(2*MAP_DILATION_KERNEL+MAP_BRICK_WIDTH))
@@ -38,15 +40,17 @@ class Map
 		/*** FUNCTIONS ***/
 		std::vector<cv::Point> getNodes(void);
 		std::vector<int> getNodePolygon(void);
-		cv::Mat getMapThresholded(void);
-		cv::Mat getMapDilated(void);
+		//cv::Mat getMapThresholded(void);
+		//cv::Mat getMapDilated(void);
 		void saveRawData(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 		
 		bool preprocessData(void);
 		
 		bool calcPolygons(cv::Point current_position, 
 								 cv::Point destination);
-		
+		bool verifyBottleMapPoint(cv::Point p, int neighborhood, int threshold);
+		bool verifyDilatedMapPoint(cv::Point p, int neighborhood, int threshold);
+		void drawNeighborhood(cv::Point p, int neighborhood, int threshold);
 		void draw_graph(std::vector<std::vector<int>> graph, 
 								std::vector<int> shortest_path);
 		void printMap(void);
@@ -57,6 +61,7 @@ class Map
 		cv::Mat map_raw = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8SC1, -2);
 		cv::Mat map_thresholded;
 		cv::Mat map_dilated_robot;
+		cv::Mat map_bottle;
 		cv::Mat map_polygons;
 		cv::Mat map_graph;
 		

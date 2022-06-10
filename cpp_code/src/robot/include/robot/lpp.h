@@ -28,7 +28,7 @@
 #define LPP_BOTTLE_ANGLE_THR 0.0873 // rad, equal to 5 degrees
 #define APPROACH_UPPER_THRESHOLD 0.1745 // in rad, 10°
 #define APPROACH_LOWER_THRESHOLD 0.0873 // in rad, 5°
-#define LPP_ARM_LENGTH 44 // in cm
+#define LPP_ARM_LENGTH 35 // in cm
 
 #define LPP_NB_SENSORS 7
 #define LPP_MEAS_HEADING_ANGLE 0.0873 // rad, turn 10 degrees to correct heading 

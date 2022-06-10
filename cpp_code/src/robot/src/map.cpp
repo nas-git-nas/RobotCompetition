@@ -21,7 +21,7 @@ std::vector<int> Map::getNodePolygon(void)
 	return node_polygon;
 }
 
-cv::Mat Map::getMapThresholded(void)
+/*cv::Mat Map::getMapThresholded(void)
 {
 	return map_thresholded;
 }
@@ -29,7 +29,7 @@ cv::Mat Map::getMapThresholded(void)
 cv::Mat Map::getMapDilated(void)
 {
  return map_dilated_robot;
-}
+}*/
 
 void Map::saveRawData(const nav_msgs::OccupancyGrid::ConstPtr &msg)
 {
@@ -53,6 +53,7 @@ bool Map::preprocessData(void)
 {
 	cv::Mat m_thr = cv::Mat(MAP_SIZE, MAP_SIZE, CV_8UC1, -2);	
 	cv::Mat m_dil;
+	cv::Mat m_bot;
 	
 	if(MAP_DRAW_MAP) {
 		cv::imwrite("map.jpg", map_raw);
@@ -87,18 +88,24 @@ bool Map::preprocessData(void)
 	/* ---                           --- */
 #endif
 
-	// expand obstacle by robot size
+	// expand obstacle by robot size for dilated map
 	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, 
 									cv::Size(MAP_DILATION_KERNEL,MAP_DILATION_KERNEL));	
 	cv::erode(m_thr, m_dil, kernel);
 	
+	// expand obstacle for bottle map
+	cv::Mat kernel_bottle = cv::getStructuringElement(cv::MORPH_RECT, 
+									cv::Size(MAP_BOTTLE_KERNEL,MAP_BOTTLE_KERNEL));	
+	cv::erode(m_thr, m_bot, kernel_bottle);	
+	
 	if(MAP_DRAW_MAP) {
-		cv::imwrite("map_erode.jpg", m_dil);
+		cv::imwrite("map_dilated.jpg", m_dil);
+		cv::imwrite("map_bottle.jpg", m_bot);
 	}
 	
 	map_thresholded = m_thr;
 	map_dilated_robot = m_dil;
-
+	map_bottle = m_bot;
 
 	return true;
 }
@@ -222,16 +229,112 @@ bool Map::calcPolygons(cv::Point current_position,
 	return false;
 }
 
+bool Map::verifyBottleMapPoint(cv::Point p, int neighborhood, int threshold)
+{
+	if(map_bottle.empty()) {
+		if(MAP_VERBOSE_PREPROCESS) {
+			ROS_WARN("map::verifyBottleMapPoint: map does not exists");
+		}
+		return true;
+	}
+	
+	// verify how many black pixels are in neighborhood of point p
+	int nb_black_pixels = 0;
+	for(int k=0; k<2*neighborhood+1; k++) {
+	
+		// outside map
+		if(k<0 || k>MAP_SIZE-1) { continue; }
+		
+		for( int l=0; l<2*neighborhood+1; l++) {
+		
+			// outside map
+			if(l<0 || l>MAP_SIZE-1) { continue; }
+			
+			// Invert axes because hector slam and polygons have x-axes in horizontal plane and 
+			// the y-axes in the vertical plane. However, for cv::Mat it is the inverse!
+			if(unsigned(map_bottle.at<uint8_t>(p.y-neighborhood+k, p.x-neighborhood+l)) == 0) {
+				nb_black_pixels += 1;
+			}
+		}
+	}
+	
+	// verify if number of black pixels exceed threshold
+	if(nb_black_pixels >= threshold) {
+		
+		return true;
+	}
+	return false;
+}
+
+bool Map::verifyDilatedMapPoint(cv::Point p, int neighborhood, int threshold)
+{
+	if(map_dilated_robot.empty()) {
+		if(MAP_VERBOSE_PREPROCESS) {
+			ROS_WARN("map::verifyDilatedMapPoint: map does not exists");
+		}
+		return true;
+	}
+	
+	// verify how many black pixels are in neighborhood of point p
+	int nb_black_pixels = 0;
+	for(int k=0; k<2*neighborhood+1; k++) {
+	
+		// outside map
+		if(k<0 || k>MAP_SIZE-1) { continue; }
+		
+		for( int l=0; l<2*neighborhood+1; l++) {
+		
+			// outside map
+			if(l<0 || l>MAP_SIZE-1) { continue; }
+			
+			// Invert axes because hector slam and polygons have x-axes in horizontal plane and 
+			// the y-axes in the vertical plane. However, for cv::Mat it is the inverse!
+			if(unsigned(map_dilated_robot.at<uint8_t>(p.y-neighborhood+k, p.x-neighborhood+l)) == 0) {
+				nb_black_pixels += 1;
+			}
+		}
+	}
+	
+	// verify if number of black pixels exceed threshold
+	if(nb_black_pixels >= threshold) {
+		
+		return true;
+	}
+	return false;
+}
+
+void Map::drawNeighborhood(cv::Point p, int neighborhood, int threshold)
+{
+	cv::Mat m_ngb = map_bottle.clone();
+	
+	for(int k=0; k<2*neighborhood+1; k++) {
+		// outside map
+		if(k<0 || k>MAP_SIZE-1) { continue; }	
+		for( int l=0; l<2*neighborhood+1; l++) {
+			// outside map
+			if(l<0 || l>MAP_SIZE-1) { continue; }
+			m_ngb.at<uint8_t>(p.y-neighborhood+k, p.x-neighborhood+l) = 100;
+		}
+	}
+	cv::circle(m_ngb, p, 1, cv::Scalar(0,0,50), cv::FILLED);
+	
+	
+	bool on_map = verifyBottleMapPoint(p, neighborhood, threshold);
+	cv::putText(m_ngb, std::to_string(on_map), cv::Point(20,20), cv::FONT_HERSHEY_DUPLEX, 
+						1, cv::Scalar(0,0,255), 1);
+	cv::imwrite("m_ngh.jpg", m_ngb);
+}
+
 void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> shortest_path)
 {
 	if(MAP_DRAW_MAP) {
-		cv::Mat m_gra = map_polygons;
+		cv::Mat map_graph = map_polygons.clone();
 
 		// draw visibility graph lines
 		for(int i=0; i<graph.size(); i++) { // loop through number of graph points
 			for(int j=0; j<i; j++) { // loop through number of connection points
 				if(graph[i][j] > 0) {
-					cv::line(m_gra, nodes[i], nodes[j], 
+					cv::line(map_graph, nodes[i], nodes[j], 
 								cv::Scalar(255,0,0), 1, cv::LINE_4);
 				}
 			}
@@ -239,18 +342,19 @@ void Map::draw_graph(std::vector<std::vector<int>> graph, std::vector<int> short
 		
 		// draw shortest path
 		for(int i=0; i<shortest_path.size()-1; i++) {
-			cv::line(m_gra, nodes[shortest_path[i]], nodes[shortest_path[i+1]], 
+			cv::line(map_graph, nodes[shortest_path[i]], nodes[shortest_path[i+1]], 
 						cv::Scalar(0,255,0), 2, cv::LINE_4);
 		}
 		
 		// draw current position and destination
-		cv::circle(m_gra, nodes[0], 5, cv::Scalar(0,0,255), cv::FILLED);
-		cv::putText(m_gra, "current pos", nodes[0], cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0,0,255), 1);
-		cv::circle(m_gra, nodes[1], 5, cv::Scalar(0,0,255), cv::FILLED);
-		cv::putText(m_gra, "destination", nodes[1], cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0,0,255), 1);
+		cv::circle(map_graph, nodes[0], 5, cv::Scalar(0,0,255), cv::FILLED);
+		cv::putText(map_graph, "current pos", nodes[0], cv::FONT_HERSHEY_DUPLEX, 1,
+						 cv::Scalar(0,0,255), 1);
+		cv::circle(map_graph, nodes[1], 5, cv::Scalar(0,0,255), cv::FILLED);
+		cv::putText(map_graph, "destination", nodes[1], cv::FONT_HERSHEY_DUPLEX, 1,
+						 cv::Scalar(0,0,255), 1);
 		
-		cv::imwrite("m_gra.jpg", m_gra);
-		map_graph = m_gra;
+		cv::imwrite("m_gra.jpg", map_graph);
 	}
 	return;
 }
