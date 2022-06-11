@@ -54,14 +54,15 @@ void DecisionMaker::init(Pose pose, ros::Time time)
 	start_time = time;
 	start_position = pose.position;
 	nb_collected_bottles = 0;
-	nb_collected_fails = 0;
+	nb_approach_fails = 0;
+	nb_pickup_fails = 0;
 }
 
 
 void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
 	// verifyTime
-	watchdog();
+	watchdog(bd);
 
 	// reset command
 	resetCommand(command);
@@ -86,32 +87,33 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 			
 		case DM_STATE_PICKUP_SEND: {
 			pickupSend(command);
-			ROS_INFO("dm::stateMachine: pickup state send");
-			dm_state = DM_STATE_PICKUP_WAIT;			
+					
 		} break;
 		
 		case DM_STATE_PICKUP_WAIT: {
-			ROS_INFO("dm::stateMachine: pickup state wait");
 		} break;
 		
 		case DM_STATE_PICKUP_VERIFY: {
 			pickupVerify(bd, command);
-			ROS_INFO("dm::stateMachine: pickup state verify");
 		} break;
 			
 		case DM_STATE_RETURN: {
 			dm_state = DM_STATE_IDL;
 			//stateReturn(pose, map, command);
 		} break;
+		
+		case DM_STATE_RECYCLE: {
+			dm_state = DM_STATE_IDL;
+			//recycle(pose, map, command);
+		} break;
 			
 		case DM_STATE_EMPTY_SEND: {
 			dm_state = DM_STATE_IDL;
-			//empty(command);
+			//emptySend(command);
 		} break;
 		
 		case DM_STATE_EMPTY_WAIT: {
 			dm_state = DM_STATE_IDL;
-			//empty(command);
 		} break;
 			
 		default:
@@ -119,11 +121,13 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 	}
 }
 
-void DecisionMaker::watchdog(void)
+void DecisionMaker::watchdog(BottleDetection &bd)
 {
 	// init. watchdog
 	static ros::Time watchdog_time;
 	static uint8_t watchdog_state = DM_STATE_IDL;
+	static int nb_pickup_repeats = 0;
+	static int nb_empty_repeats = 0;
 	
 	// update watchdog
 	if(unsigned(watchdog_state) != unsigned(dm_state)) {
@@ -131,24 +135,21 @@ void DecisionMaker::watchdog(void)
 		watchdog_state = dm_state;
 	}
 	ros::Duration watchdog_duration = ros::Time::now()-watchdog_time;
-	if(DM_VERBOSE_WATCHDOG) {
-		ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
-	}
 
 	// verify watchdog (if state machine is stuck in a state)	
-	switch(dm_state) {
-		case DM_STATE_IDL: {
-
-		} break;
-			
+	switch(dm_state) {			
 		case DM_STATE_EXPLORE: {
-
+			if(watchdog_duration.toSec() > DM_WATCHDOG_EXPLORE) {
+				nb_approach_fails = 0;
+				nb_pickup_fails = 0;
+			}
 		} break;
 		
 		case DM_STATE_MOVE: {
 			if(watchdog_duration.toSec() > DM_WATCHDOG_MOVE) {
 				dm_state = DM_STATE_EXPLORE;
 				if(DM_VERBOSE_WATCHDOG) {
+					ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
 					ROS_WARN("dm::watchdog: move -> explore");
 				}
 			}
@@ -157,35 +158,71 @@ void DecisionMaker::watchdog(void)
 		case DM_STATE_APPROACH: {
 			if(watchdog_duration.toSec() > DM_WATCHDOG_APPROACH) {	
 				dm_state = DM_STATE_MOVE;
+				nb_approach_fails = 0;
+				nb_pickup_fails = 0;			
+				bd.clearRecordedBottles();
 				if(DM_VERBOSE_WATCHDOG) {
+					ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
 					ROS_WARN("dm::watchdog: approach -> explore");
 				}
 			}
 		} break;
 			
 		case DM_STATE_PICKUP_WAIT: {
-			if(watchdog_duration.toSec() > DM_WATCHDOG_PICKUP) {	
-				dm_state = DM_STATE_PICKUP_VERIFY;
-				if(DM_VERBOSE_WATCHDOG) {
-					ROS_WARN("dm::watchdog: pickup wait -> pickup verify");
+			if(watchdog_duration.toSec() > DM_WATCHDOG_PICKUP) {
+			
+				if(nb_pickup_repeats < DM_PICKUP_NB_REPEATS) {
+					dm_state = DM_STATE_PICKUP_SEND;
+					nb_pickup_repeats += 1;
+					
+					if(DM_VERBOSE_WATCHDOG) {
+						ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
+						ROS_WARN("dm::watchdog: pickup wait -> pickup send");
+					}
+				} else {						
+					dm_state = DM_STATE_PICKUP_VERIFY;
+					nb_pickup_repeats = 0;
+					
+					if(DM_VERBOSE_WATCHDOG) {
+						ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
+						ROS_WARN("dm::watchdog: pickup wait -> pickup verify");
+					}
 				}
 			}
 		} break;
-			
-		case DM_STATE_RETURN: {
 		
-		} break;
-			
 		case DM_STATE_EMPTY_WAIT: {
-
-		} break;
-			
+			if(watchdog_duration.toSec() > DM_WATCHDOG_EMPTY) {
+				if(nb_empty_repeats < DM_EMPTY_NB_REPEATS) {
+					dm_state = DM_STATE_EMPTY_SEND;
+					nb_empty_repeats += 1;
+					
+					if(DM_VERBOSE_WATCHDOG) {
+						ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
+						ROS_WARN("dm::watchdog: emptyWait -> emptySend");
+					}
+				} else {						
+					dm_state = DM_STATE_EXPLORE;
+					nb_empty_repeats = 0;
+					
+					if(DM_VERBOSE_WATCHDOG) {
+					ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
+					ROS_WARN("dm::watchdog: emptyWait -> explore");
+					}
+				}	
+			}
+		} break;			
 	}	
 
 	// verify if it is time to return
 	ros::Duration delta_time = ros::Time::now()-start_time;
 	if(delta_time.toSec() > DM_WATCHDOG_END) {
-		dm_state = DM_STATE_RETURN;		
+		dm_state = DM_STATE_RETURN;
+		if(DM_VERBOSE_WATCHDOG) {
+			ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
+			ROS_INFO("dm::watchdog: end of competition -> return home");
+			ROS_WARN("dm::watchdog: pickup empty -> explore");
+		}		
 	}
 }
 
@@ -207,7 +244,7 @@ void DecisionMaker::explore(Pose pose, Map &map, BottleDetection &bd, Command &c
 {
 	// verify if bottle was detected
 	Bottle bottle = bd.getBestBottle(map);
-	if(bottle.nb_meas >= DM_BOTTLE_NB_MEAS_THR) {
+	if(bottle.nb_meas >= DM_EXPLORE_NB_MEAS_THR) {
 		dm_state = DM_STATE_APPROACH;
 		
 		if(DM_VERBOSE_EXPLORE) {
@@ -245,11 +282,29 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	Bottle bottle = bd.getBestBottle(map);
 	
 	// verify if a bottle is detected
-	if(bottle.position.x==0 && bottle.position.y==0) {
-		dm_state = DM_STATE_EXPLORE;
-		if(DM_VERBOSE_BD) {
+	if(bottle.position.x==0 && bottle.position.y==0) {	
+		nb_approach_fails += 1;
+		
+		if(DM_VERBOSE_APPROACH) {
 			ROS_INFO("DM::approach: no bottles detected");
-			ROS_WARN("dm::approach: approach -> explore");
+		}
+		
+		if(nb_approach_fails >= DM_APPROACH_MAX_NB_FAILS) {
+			dm_state = DM_STATE_MOVE;
+			nb_approach_fails = 0;
+			nb_pickup_fails = 0;			
+			bd.clearRecordedBottles();
+			
+			if(DM_VERBOSE_APPROACH) {
+				ROS_WARN("dm::approach: approach -> explore");
+			}
+			
+		} else {
+			dm_state = DM_STATE_EXPLORE;
+			
+			if(DM_VERBOSE_APPROACH) {
+				ROS_WARN("dm::approach: approach -> explore");
+			}
 		}
 		return;
 	}
@@ -258,8 +313,11 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	if(bottle.position.x<0 || bottle.position.x>MAP_SIZE 
 		|| bottle.position.y<0 || bottle.position.y>MAP_SIZE) {
 		dm_state = DM_STATE_MOVE;
-		nb_collected_fails = 0;
-		if(DM_VERBOSE_BD) {
+		nb_approach_fails = 0;
+		nb_pickup_fails = 0;
+		bd.clearRecordedBottles();
+		
+		if(DM_VERBOSE_APPROACH) {
 			ROS_INFO("DM::approach: best bottle is not reasonable");
 			ROS_WARN("dm::approach: approach -> move");
 		}
@@ -285,7 +343,7 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 			dm_state = DM_STATE_PICKUP_SEND;
 			pickup_bottle = bottle;
 			
-			if(DM_VERBOSE_BD) {
+			if(DM_VERBOSE_APPROACH) {
 				ROS_INFO("DM::approach: opt. position is reached!");
 				ROS_WARN("dm::approach: approach -> pickupSend");
 			}
@@ -295,18 +353,18 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	
 	// verify if optimal position is reachable
 	if(map.verifyBottleMapPoint(opt_position, 1, 1)) {
-		// TODO: clear recorded bolltes list
-		//bd.clearRecordedBottles();
 		dm_state = DM_STATE_MOVE;
-		nb_collected_fails = 0;
-		if(DM_VERBOSE_BD) {
+		nb_approach_fails = 0;
+		nb_pickup_fails = 0;
+		bd.clearRecordedBottles();
+		
+		if(DM_VERBOSE_APPROACH) {
 			ROS_WARN("DM::approach: opt. position is not reachable!");
 			ROS_WARN("dm::approach: approach -> move");
 		}
 		return;	
 	
-	}
-	
+	}	
 	
 	// set bottle as destination
 	command.stop_motor = false;
@@ -315,16 +373,6 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	command.trajectory_y.push_back(pose.position.y);
 	command.trajectory_x.push_back(bottle.position.x);
 	command.trajectory_y.push_back(bottle.position.y);	
-	
-	if(DM_VERBOSE_BD) {
-		ROS_INFO_STREAM("dm::approach: state=" << unsigned(command.dm_state));
-		ROS_INFO_STREAM("dm::approach: stop motor=" << command.stop_motor);
-		ROS_INFO_STREAM("dm::approach: nb_nodes=" << command.nb_nodes);			
-		for(int i=0; i<command.trajectory_x.size(); i++) {
-			ROS_INFO_STREAM("dm::approach: trajectory[" << i << "] = (" << command.trajectory_x[i] 
-									<< "," << command.trajectory_y[i] << ")");
-		}
-	}
 }
 
 bool DecisionMaker::verifyHeading(BottleDetection &bd)
@@ -361,7 +409,9 @@ void DecisionMaker::pickupSend(Command &command)
 	// set command
 	command.arm_angle = 1;
 	command.air_pump = 1;
-
+	
+	dm_state = DM_STATE_PICKUP_WAIT;
+	
 	if(DM_VERBOSE_PICKUP) {
 		ROS_WARN("dm::pickupSend: pickupSend -> pickupWait");
 	}
@@ -386,15 +436,17 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 	if(nb_meas <= DM_PICKUP_NB_MEAS_THR) {
 		dm_state = DM_STATE_EXPLORE;
 		nb_collected_bottles += 1;
-		nb_collected_fails = 0;
-		
+		nb_approach_fails = 0;
+		nb_pickup_fails = 0;
+		bd.clearRecordedBottles();
+				
 		if(DM_VERBOSE_PICKUP) {
 			ROS_INFO_STREAM("dm::pickupVerify::nb_meas = " << nb_meas << " -> success");
 			ROS_WARN("dm::pickupVerify: pickupVerify -> explore");
 		}
 	} else {
 		dm_state = DM_STATE_APPROACH;
-		nb_collected_fails += 1;
+		nb_pickup_fails += 1;
 		
 		if(DM_VERBOSE_PICKUP) {
 			ROS_INFO_STREAM("dm::pickupVerify::nb_meas = " << nb_meas << " -> fail -> approach");
@@ -403,85 +455,74 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 	}
 	
 	// move on if nb. of fails is too high
-	if(nb_collected_fails >= DM_PICKUP_MAX_NB_FAILS) {
+	if(nb_pickup_fails >= DM_PICKUP_MAX_NB_FAILS) {
 		if(DM_VERBOSE_PICKUP) {
-			ROS_INFO_STREAM("dm::pickupVerify::nb_fails = " << nb_collected_fails 
-									<< " -> move on");
+			ROS_INFO_STREAM("dm::pickupVerify::nb_fails = " << nb_pickup_fails << " -> move on");
 			ROS_WARN("dm::pickupVerify: pickupVerify -> move");
 		}
 		
 		dm_state = DM_STATE_MOVE;
-		nb_collected_fails = 0;
+		nb_approach_fails = 0;
+		nb_pickup_fails = 0;
+		bd.clearRecordedBottles();
 	}
 
 }
 
 void DecisionMaker::stateReturn(Pose pose, Map &map, Command &command)
 {
-	static uint8_t return_state = DM_RETURN_STATE_GO_BACK;
 	cv::Point sp;
 
-	switch(return_state) {
-		case DM_RETURN_STATE_GO_BACK: {	
-			// go corner position in recycling area
-			sp.x = start_position.x - DM_RECYCLING_OFFSET;
-			sp.y = start_position.y - DM_RECYCLING_OFFSET;	
-			
-			// verify if position is reached
-			if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {
-				return_state = DM_RETURN_STATE_TURN;
-			}				
-		} break;
+	// go corner position in recycling area
+	sp.x = start_position.x - DM_RECYCLING_OFFSET;
+	sp.y = start_position.y - DM_RECYCLING_OFFSET;	
+	
+	// verify if position is reached
+	if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {
+		dm_state = DM_STATE_RECYCLE;
 		
-		case DM_RETURN_STATE_TURN: {
-			// go corner position in recycling area
-			sp.x = start_position.x;
-			sp.y = start_position.y;	
-			
-			// verify if position is reached
-			if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {
-				return_state = DM_RETURN_STATE_GO_BACK;
-				dm_state = DM_STATE_EMPTY_SEND;
-			}		
-		} break;
-		
+		if(DM_VERBOSE_RETURN) {
+			ROS_WARN("dm::pickupSend: stateReturn -> recycle");
+		}
+	}	
+	
+	// TODO: what if recycling area is not reachable???			
+	
+	// calc. trajectory and set command
+	GPP(pose, map, sp, command);	
+}
+
+void DecisionMaker::recycle(Pose pose, Map &map, Command &command)
+{
+	cv::Point sp;
+
+	// go corner position in recycling area
+	sp.x = start_position.x;
+	sp.y = start_position.y;	
+	
+	// verify if position is reached
+	if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {
+		dm_state = DM_STATE_EMPTY_SEND;
+		if(DM_VERBOSE_RETURN) {
+			ROS_WARN("dm::pickupSend: recycle -> emptySend");
+		}
 	}
 	
 	// calc. trajectory and set command
 	GPP(pose, map, sp, command);	
 }
 
-/*void DecisionMaker::empty(Command &command)
+void DecisionMaker::emptySend(Command &command)
 {
-	static ros::Time empty_start_time;
-
-	switch(3) {
-		case 0: {
-			// set timer
-			empty_start_time = ros::Time::now();
-			
-			// change pickup state
-			empty_state = 1;
-			
-			// set command
-			command.basket_angle = 1;
-		} break;
-				
-		case 1: {
-			// change pickup state if time is elapsed
-			ros::Duration elapse_time = ros::Time::now()-empty_start_time;
-			if(elapse_time.toSec() > DM_EMPTY_MOVE_DURATION) {
-
-				dm_state = DM_STATE_EXPLORE;
-			}
-			
-			// set command	
-			command.basket_angle = 0;
-		} break;
-
-
+	// set command
+	command.basket_angle = 1;
+	
+	dm_state = DM_STATE_EMPTY_WAIT;
+	
+	if(DM_VERBOSE_RETURN) {
+		ROS_WARN("dm::pickupSend: emptySend -> emptyWait");
 	}
-}*/
+}
 
 bool DecisionMaker::updateSP(Pose pose, Map &map)
 {
@@ -495,7 +536,6 @@ bool DecisionMaker::updateSP(Pose pose, Map &map)
 	
 	// verify if current set point is reachable
 	while(map.verifyDilatedMapPoint(sps[r_idx][sp_idx], 1, 1)) {
-		//TODO: test when SP is in obstacle
 		/*int error_x = sps[r_idx][sp_idx].x - pose.position.x;
 		int error_y = sps[r_idx][sp_idx].y - pose.position.y;		
 		float theta = limitAngle(atan2f(error_y, error_x));
@@ -596,35 +636,4 @@ float DecisionMaker::limitAngle(float angle)
     return angle;
 }
 
-
-/*
-#define DM_PICKUP_STATE_MOVE_DOWN	0
-#define DM_PICKUP_STATE_ENGAGE		1
-#define DM_PICKUP_STATE_MOVE_UP		2
-#define DM_PICKUP_STATE_VERIFY		3
-#define DM_PICKUP_STATE_DISENGAGE	4
-#define DM_PICKUP_STATE_MOVE_FRONT	5
-	switch(pickup_state) {
-		case DM_PICKUP_STATE_MOVE_DOWN:
-
-			break;		
-		case DM_PICKUP_STATE_ENGAGE:
-			
-			break;
-		case DM_PICKUP_STATE_MOVE_UP:
-			
-			break;
-		case DM_PICKUP_STATE_VERIFY:
-			
-			break;
-		case DM_PICKUP_STATE_DISENGAGE:
-			
-			break;
-		case DM_PICKUP_STATE_MOVE_FRONT:
-			
-			break;
-		default:
-			pickup_state = DM_PICKUP_STATE_MOVE_FRONT
-	}
-*/
 

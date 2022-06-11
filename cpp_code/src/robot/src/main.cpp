@@ -229,7 +229,24 @@ void sendCommandSRV(ros::ServiceClient &client_command, Command &command)
 
 	if(!client_command.call(srv)) {
 		ROS_ERROR("main::sendCommandSRV: Failed to call service!");
-	}	
+	}
+	
+	// send second command and turn everything off, if arm or basket is moving
+	// otherwise controller is sending faster multiple commands and arduino
+	// memorizes them in queue and executes them afterwards
+	if(unsigned(command.dm_state)==DM_STATE_PICKUP_SEND || 
+		unsigned(command.dm_state)==DM_STATE_EMPTY_SEND) {
+		robot::CommandSRV srv2;
+		srv.request.dm_state = command.dm_state;
+		srv.request.stop_motor = true;
+		srv.request.arm_angle = false;
+		srv.request.basket_angle = false;
+		srv.request.air_pump = false;		
+		
+		if(!client_command.call(srv2)) {
+			ROS_ERROR("main::sendCommandSRV: Failed to call service!");
+		}
+	}
 }
 
 void windowsLogSRV(ros::Publisher& windows_pub, Pose pose, Command command)

@@ -236,7 +236,13 @@ void LPP::updateApproachVelocity(void)
 
 	// turn on spot or move to next set-point depending on state
 	if(moving_state) {
-		robotApproach(theta_error, distance);
+		// move straight if error is larger than arm length, otherwise backwards
+		if(distance > LPP_ARM_LENGTH) {
+			robotMove(theta_error, distance);
+		} else {
+			robotMoveBack(theta_error, distance);
+		}
+		
 	} else {
 		robotTurn(theta_error);
 	}
@@ -282,6 +288,16 @@ void LPP::robotStop(void)
     } 
 }
 
+h
+
+h
+k^
+
+k
+
+kk
+
+
 
 void LPP::robotMove(float theta_error, float distance)
 {
@@ -304,34 +320,24 @@ void LPP::robotMove(float theta_error, float distance)
 	} 
 }
 
-void LPP::robotApproach(float theta_error, float distance)
+void LPP::robotMoveBack(float theta_error, float distance)
 {
-	float bias = theta_error*LPP_APPR_BIAS_DELTA;
-	bias = limitVelocity(bias, LPP_APPR_BIAS_MAX, 0);
+	float bias = theta_error*LPP_MOVE_BIAS_DELTA;
+	bias = limitVelocity(bias, LPP_MOVE_BIAS_MAX, 0);
 	
-	float vel = distance*LPP_APPR_DELTA + LPP_APPR_ZERO;
-
-	// move straight if distance is larger than arm length, otherwise backwards
-	float vel_r;
-	float vel_l;	
-	if(distance > LPP_ARM_LENGTH) {
-		vel_r = vel*(1+bias);
-		vel_l = vel*(1-bias);
-	} else {
-		vel_r = -vel*(1-bias);
-		vel_l = -vel*(1+bias);
-	}	
-
-	vel_r = limitVelocity(vel_r, LPP_APPR_VEL_MAX, LPP_APPR_VEL_MIN);
-	vel_l = limitVelocity(vel_l, LPP_APPR_VEL_MAX, LPP_APPR_VEL_MIN);
-
+	float vel = distance*LPP_MOVE_DELTA + LPP_MOVE_ZERO;	
+	float vel_r = -vel*(1-bias);
+	float vel_l = -vel*(1+bias);
+	vel_r = limitVelocity(vel_r, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+	vel_l = limitVelocity(vel_l, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+	
 	motor_vel[0] = vel_r;
 	motor_vel[1] = vel_r;
 	motor_vel[2] = vel_l;
 	motor_vel[3] = vel_l;
 
 	if(LPP_VERBOSE) {
-	  std::cout << "robotApproach: vel=" << vel << std::endl;
+	  std::cout << "robotMoveBack: vel=" << vel << std::endl;
 	} 
 }
 

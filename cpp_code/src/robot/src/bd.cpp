@@ -19,7 +19,8 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, Map map,
 {
 	// verify if measurements are false and save it
 	for(int i=0; i<BD_NB_SENSORS; i++) {
-		if(meas[i]>BD_ULTRASOUND_MAX_DISTANCE || meas[i]<0) {
+		// mask measurments if they are out of range
+		if(meas[i]>max_meas_distance[i] || meas[i]<0) {
 			meas[i] = 0;
 			if(BD_VERBOSE_SET_ULTRASOUND) {
 				ROS_WARN("main::arduinoCB: measurement out of range");
@@ -27,10 +28,6 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, Map map,
 		}
 		bottle_meas[i] = 0; // reset array
 	}
-
-	// mask side sensors
-	//meas[0] = 0;
-	//meas[6] = 0;
 
 	// calc. position of measured bottles
 	std::vector<Bottle> new_bottles = calcNewBottles(map, pose, meas);
@@ -274,14 +271,14 @@ void BottleDetection::ageRecordedBottles(Pose pose)
 
 		// verify if bottle is in the dead angle between sensors on the side 
 		// and sensors in the front
-		int error_x = recorded_bottles[i].position.x - pose.position.x;
+		/*int error_x = recorded_bottles[i].position.x - pose.position.x;
 		int error_y = recorded_bottles[i].position.y - pose.position.y;
 		float theta_error = abs(atan2f(error_y, error_x) - pose.heading);
 		if(BD_AGE_DEAD_ANGLE_MIN < theta_error &&  theta_error < BD_AGE_DEAD_ANGLE_MAX) {
 			recorded_bottles[i].updated = false;
 			ROS_ERROR("bd::ageRecordedBottles: do not age !");
 			continue;
-		}
+		}*/
 
 		// verify if bottle was updated in this cycle
 		if(!recorded_bottles[i].updated) {

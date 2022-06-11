@@ -20,27 +20,23 @@
 #define DM_H
 
 #define DM_SP_REACHED_THR 10 //cm, should be higher than DM_SP_CHANGE
-#define DM_SP_CHANGE 5 //cm, how much set point should be moved towards robot if it is not reachable
+//#define DM_SP_CHANGE 5 //cm, how much set point should be moved towards robot if it is not reachable
 
-#define DM_BOTTLE_NB_MEAS_THR 1
-#define DM_RECYCLING_OFFSET			20
-
-
+#define DM_EXPLORE_NB_MEAS_THR 		2
+#define DM_APPROACH_MAX_NB_FAILS   	3
 #define DM_PICKUP_MAX_NB_FAILS   	3
 #define DM_PICKUP_NB_MEAS_THR			1
+#define DM_RECYCLING_OFFSET			20
 
-#define DM_RETURN_STATE_GO_BACK		0
-#define DM_RETURN_STATE_TURN			1
+#define DM_WATCHDOG_EXPLORE			5 // in s, clear nb_pickup_fails and nb_approach_fails 
+#define DM_WATCHDOG_MOVE				8 // in s, go to state explore
+#define DM_WATCHDOG_APPROACH			30 // in s, go to state move
+#define DM_WATCHDOG_PICKUP				5 // in s, length of arm movement when picking up bottles
+#define DM_WATCHDOG_EMPTY 				5 // in s, length of basket movement when emptying it
+#define DM_WATCHDOG_END					500 // in s, time before return at the end
 
-#define DM_EMPTY_STATE_START			0	
-#define DM_EMPTY_STATE_MOVE			1
-#define DM_EMPTY_MOVE_DURATION		8 // in s
-
-
-#define DM_WATCHDOG_MOVE				10
-#define DM_WATCHDOG_APPROACH			30
-#define DM_WATCHDOG_PICKUP				7
-#define DM_WATCHDOG_END					500 // in s	
+#define DM_PICKUP_NB_REPEATS			2
+#define DM_EMPTY_NB_REPEATS			2
 
 
 // class containing map
@@ -67,7 +63,8 @@ class DecisionMaker
 		cv::Point start_position;
 		Bottle pickup_bottle;
 		uint8_t nb_collected_bottles = 0;
-		uint8_t nb_collected_fails = 0;
+		uint8_t nb_approach_fails = 0;
+		uint8_t nb_pickup_fails = 0;
 		
 		/*** CLASSES ***/
 		VisibilityGraph visibility_graph;
@@ -75,7 +72,7 @@ class DecisionMaker
 
 		
 		/*** FUNCTIONS ***/
-		void watchdog(void);
+		void watchdog(BottleDetection &bd);
 		void explore(Pose pose, Map &map, BottleDetection &bd, Command &command);
 		void move(Pose pose, Map &map, Command &command);
 		void approach(Pose pose, Map &map, BottleDetection &bd, Command &command);
@@ -83,7 +80,8 @@ class DecisionMaker
 		void pickupSend(Command &command);
 		void pickupVerify(BottleDetection &bd, Command &command);
 		void stateReturn(Pose pose, Map &map, Command &command);
-		void empty(Command &command);
+		void recycle(Pose pose, Map &map, Command &command);
+		void emptySend(Command &command);
 		bool updateSP(Pose pose, Map &map);
 		bool updateSPIndices(Pose pose);
 		void GPP(Pose pose, Map &map, cv::Point destination, Command &command);

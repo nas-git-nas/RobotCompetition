@@ -34,35 +34,35 @@
 #define LPP_MEAS_HEADING_ANGLE 0.0873 // rad, turn 10 degrees to correct heading 
 #define LPP_MEAS_HEADING_THR 30 // in cm, above this value measurement is not taken into
 										 // account when doing heading correction
+#define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
 
-#define LPP_MOVE_VEL_MAX 3.0 // in rad/s
+#define LPP_MOVE_VEL_MAX 2.5 // in rad/s
 #define LPP_MOVE_VEL_MIN 1.5 // in rad/s
 #define LPP_MOVE_DIST_MAX 100.0 // in cm
 #define LPP_MOVE_DIST_MIN 10.0 // in cm
 #define LPP_MOVE_DELTA ((LPP_MOVE_VEL_MAX-LPP_MOVE_VEL_MIN)/(LPP_MOVE_DIST_MAX-LPP_MOVE_DIST_MIN))
 #define LPP_MOVE_ZERO (LPP_MOVE_VEL_MIN - (LPP_MOVE_DELTA*LPP_MOVE_DIST_MIN))
-#define LPP_MOVE_BIAS_MAX 0.3 // in %, max. velocity bias depending on error in heading
+#define LPP_MOVE_BIAS_MAX 0.15 // in %, max. velocity bias depending on error in heading
 #define LPP_MOVE_BIAS_DELTA (LPP_MOVE_BIAS_MAX/LPP_TURN_ANGLE_MIN)
 
-#define LPP_TURN_VEL_MAX 1.2 // in rad/s
+#define LPP_APPR_VEL_MAX 1.5 // in rad/s
+#define LPP_APPR_VEL_MIN 1.0 // in rad/s
+#define LPP_APPR_DIST_MAX 50.0 // in cm
+#define LPP_APPR_DIST_MIN 10.0 // in cm
+#define LPP_APPR_DELTA ((LPP_APPR_VEL_MAX-LPP_APPR_VEL_MIN)/(LPP_APPR_DIST_MAX-LPP_APPR_DIST_MIN))
+#define LPP_APPR_ZERO (LPP_APPR_VEL_MIN - (LPP_APPR_DELTA*LPP_APPR_DIST_MIN))
+#define LPP_APPR_BIAS_MAX 0.2 // in %, max. velocity bias depending on error in heading
+#define LPP_APPR_BIAS_DELTA (LPP_APPR_BIAS_MAX/LPP_TURN_ANGLE_MIN)
+
+#define LPP_TURN_VEL_MAX 0.8 // in rad/s
 #define LPP_TURN_VEL_MIN 0.6 // in rad/s
 #define LPP_TURN_ANGLE_MAX 1.571 // in rad, 90°
 #define LPP_TURN_ANGLE_MIN 0.2618 // in rad, 15°
 #define LPP_TURN_DELTA ((LPP_TURN_VEL_MAX-LPP_TURN_VEL_MIN)/(LPP_TURN_ANGLE_MAX-LPP_TURN_ANGLE_MIN))
 #define LPP_TURN_ZERO (LPP_TURN_VEL_MIN - (LPP_TURN_DELTA*LPP_TURN_ANGLE_MIN))
 
-#define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
-
-/*#define VEL_TURN_MAX 1.2 // 3.5// in rad/s
-#define VEL_TURN_MIN 0.6 // in rad/s
-
-#define VEL_TURN_PID_KP 1.0
-
-#define VEL_MOVE_MAX 3.0 // in rad/s
-#define VEL_MOVE_MIN 1.5 // in rad/s
-#define VEL_MOVE_BIAS 2.5 // in rad/s
-#define VEL_MOVE_PID_KP 1.0
-#define VEL_MOVE_PID_KI 0.0*/
+#define LPP_CURVE_VEL_MAX 1.0 // in rad/s
+#define LPP_CURVE_VEL_MIN 0.4 // in rad/s
 
 #define DEGREE2RAD 0.017453
 #define RAD2DEGREE 57.296
@@ -101,7 +101,7 @@ class LPP
 		void updatePose(void);
 		void robotStop(void);
 		void robotMove(float theta_error, float distance);
-		void robotMoveBack(float theta_error, float distance);
+		void robotApproach(float theta_error, float distance);
 		void robotTurn(float theta_error);
 		void robotCurve(float theta_error);
 		float limitVelocity(float vel, float max, float min);
@@ -110,3 +110,16 @@ class LPP
 
 
 #endif // LOCAL_PATH_PLANNER_H
+
+/*
+#define VEL_TURN_MAX 1.2 // 3.5// in rad/s
+#define VEL_TURN_MIN 0.6 // in rad/s
+
+#define VEL_TURN_PID_KP 1.0
+
+#define VEL_MOVE_MAX 3.0 // in rad/s
+#define VEL_MOVE_MIN 1.5 // in rad/s
+#define VEL_MOVE_BIAS 2.5 // in rad/s
+#define VEL_MOVE_PID_KP 1.0
+#define VEL_MOVE_PID_KI 0.0
+*/

@@ -59,10 +59,11 @@
 // dm.cpp
 #define DM_VERBOSE 						false
 #define DM_VERBOSE_GPP 					false
-#define DM_VERBOSE_BD					true
+#define DM_VERBOSE_APPROACH			true
 #define DM_VERBOSE_EXPLORE				true
 #define DM_VERBOSE_WATCHDOG			true
 #define DM_VERBOSE_PICKUP				true
+#define DM_VERBOSE_RETURN				true
 
 #define DM_COMMAND_ARM_REST 		0
 #define DM_COMMAND_BASKET_REST 	0
@@ -75,8 +76,9 @@
 #define DM_STATE_PICKUP_WAIT		5
 #define DM_STATE_PICKUP_VERIFY 	6
 #define DM_STATE_RETURN				7
-#define DM_STATE_EMPTY_SEND		8
-#define DM_STATE_EMPTY_WAIT		9
+#define DM_STATE_RECYCLE			8
+#define DM_STATE_EMPTY_SEND		9
+#define DM_STATE_EMPTY_WAIT		10
 
 
 // general
