@@ -34,7 +34,7 @@
 
 #define DM_EMPTY_STATE_START			0	
 #define DM_EMPTY_STATE_MOVE			1
-#define DM_EMPTY_MOVE_DURATION		5 // in s
+#define DM_EMPTY_MOVE_DURATION		8 // in s
 
 
 #define DM_WATCHDOG_MOVE				10

@@ -37,15 +37,15 @@ void DecisionMaker::init(Pose pose, ros::Time time)
 #else
 	first_point.x = pose.position.x + 150;
 	first_point.y = pose.position.y;
-	second_point.x = pose.position.x + 200;
-	second_point.y = pose.position.y + 200;
+	second_point.x = pose.position.x + 350;
+	second_point.y = pose.position.y;
 	third_point.x = pose.position.x;
 	third_point.y = pose.position.y;
 #endif
 
 	std::vector<cv::Point> first_round;
 	first_round.push_back(first_point);
-	//first_round.push_back(second_point);
+	first_round.push_back(second_point);
 	//first_round.push_back(third_point);
 	
 	sps.push_back(first_round);
@@ -247,7 +247,6 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	// verify if a bottle is detected
 	if(bottle.position.x==0 && bottle.position.y==0) {
 		dm_state = DM_STATE_EXPLORE;
-
 		if(DM_VERBOSE_BD) {
 			ROS_INFO("DM::approach: no bottles detected");
 			ROS_WARN("dm::approach: approach -> explore");
@@ -259,7 +258,7 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	if(bottle.position.x<0 || bottle.position.x>MAP_SIZE 
 		|| bottle.position.y<0 || bottle.position.y>MAP_SIZE) {
 		dm_state = DM_STATE_MOVE;
-
+		nb_collected_fails = 0;
 		if(DM_VERBOSE_BD) {
 			ROS_INFO("DM::approach: best bottle is not reasonable");
 			ROS_WARN("dm::approach: approach -> move");
@@ -295,11 +294,11 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	}
 	
 	// verify if optimal position is reachable
-	if(map.verifyDilatedMapPoint(opt_position, 1, 1)) {
+	if(map.verifyBottleMapPoint(opt_position, 1, 1)) {
 		// TODO: clear recorded bolltes list
 		//bd.clearRecordedBottles();
 		dm_state = DM_STATE_MOVE;
-		
+		nb_collected_fails = 0;
 		if(DM_VERBOSE_BD) {
 			ROS_WARN("DM::approach: opt. position is not reachable!");
 			ROS_WARN("dm::approach: approach -> move");
@@ -348,7 +347,7 @@ bool DecisionMaker::verifyHeading(BottleDetection &bd)
 	}
 	
 	// bottle is centered
-	if(left_meas == right_meas) {
+	if(left_meas==right_meas && meas[3]!=0) {
 		return true;
 	}
 	
@@ -380,6 +379,8 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 			nb_meas += 1;
 		}
 	}
+	
+	//TODO: change condition  and add delai
 
 	// verify if bottle is still detected
 	if(nb_meas <= DM_PICKUP_NB_MEAS_THR) {

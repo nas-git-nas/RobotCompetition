@@ -23,6 +23,8 @@
 #define BD_BOTTLE_THR 30 // in cm, maximal distance at which two measurements are
 								// considered to be the same bottle
 #define BD_NB_MEAS_MAX 30 // maximum number of measurements allowed
+#define BD_AGE_DEAD_ANGLE_MIN 0.7854 // in rad, defines angle range where the age of the recorded bottles
+#define BD_AGE_DEAD_ANGLE_MAX 1.309 // in rad, is not increased
 
 // structures
 struct Bottle {
@@ -51,7 +53,7 @@ class BottleDetection
 		std::array<int,BD_NB_SENSORS> bottle_meas;
 		
 		// pose of sensor with respect to robot: {x,y,angle}
-		float dist_to_robot[BD_NB_SENSORS][3] = {	{2.0,19.0,1.5708},     // most left one
+		float dist_to_robot[BD_NB_SENSORS][3] = {	{2.0,19.0,0.7854},     // most left one
 																{25.0,15.4,0.2618},
 																{23.5,7.8,0.0},
 																{23.5, 0,0.0},
@@ -63,7 +65,7 @@ class BottleDetection
 		std::vector<Bottle> calcNewBottles(Map map, Pose pose,
 													  std::array<int,BD_NB_SENSORS> meas);
 		void addNewBottles(std::vector<Bottle> new_bottles);
-		void ageRecordedBottles(void);
+		void ageRecordedBottles(Pose pose);
 		cv::Point convertMeasurement(int sensor, Pose pose, int measurement);
 		bool verifyMeasAge(void);
 		int calcDistance(Bottle b1, Bottle b2);

@@ -9,8 +9,8 @@
 #define MAIN_H
 
 // debugging
-#define DEBUG_FAKE_MAP
-#define DEBUG_FAKE_MEAS
+//#define DEBUG_FAKE_MAP
+//#define DEBUG_FAKE_MEAS
 //#define DEBUG_WITHOUT_LPP
 
 // main.cpp
@@ -50,7 +50,7 @@
 
 
 // bd.cpp
-#define BD_VERBOSE_CALC 				true
+#define BD_VERBOSE_CALC 				false
 #define BD_VERBOSE_SET_ULTRASOUND	false
 #define BD_VERBOSE_GET_BOTTLE			true
 

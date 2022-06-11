@@ -60,6 +60,7 @@ std::array<float,4> LPP::getMotorVelocity(void)
 	// enter different drive mode depending on decision maker state
 	switch(dm_state) {	
 		case DM_STATE_EXPLORE:
+		case DM_STATE_MOVE:
 		case DM_STATE_RETURN:
 			updateMotorVelocity();
 			break;
@@ -161,7 +162,7 @@ void LPP::updateMotorVelocity(void)
 
         // turn on spot or move to next set-point depending on state
         if(moving_state) {
-            robotMove(theta_error, theta_error_integration);
+            robotMove(theta_error, distance);
         } else {
             robotTurn(theta_error);
         }
@@ -215,9 +216,9 @@ void LPP::updateApproachVelocity(void)
 		}
 		
 		if(left_meas > right_meas) {
-			robotTurn(10);
+			robotCurve(10);
 		} else if(left_meas < right_meas) {
-			robotTurn(-10);
+			robotCurve(-10);
 		} else {
 			stop_robot = true;
 			robotStop();		
@@ -237,9 +238,9 @@ void LPP::updateApproachVelocity(void)
 	if(moving_state) {
 		// move straight if error is larger than arm length, otherwise backwards
 		if(distance > LPP_ARM_LENGTH) {
-			robotMove(theta_error, theta_error_integration);
+			robotMove(theta_error, distance);
 		} else {
-			robotMoveBack(theta_error, theta_error_integration);
+			robotMoveBack(theta_error, distance);
 		}
 		
 	} else {
@@ -287,9 +288,115 @@ void LPP::robotStop(void)
     } 
 }
 
-void LPP::robotMove(float theta_error, float theta_error_integration)
+void LPP::robotMove(float theta_error, float distance)
+{
+	float bias = theta_error*LPP_MOVE_BIAS_DELTA;
+	bias = limitVelocity(bias, LPP_MOVE_BIAS_MAX, 0);
+	
+	float vel = distance*LPP_MOVE_DELTA + LPP_MOVE_ZERO;	
+	float vel_r = vel*(1+bias);
+	float vel_l = vel*(1-bias);
+	vel_r = limitVelocity(vel_r, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+	vel_l = limitVelocity(vel_l, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+
+	motor_vel[0] = vel_r;
+	motor_vel[1] = vel_r;
+	motor_vel[2] = vel_l;
+	motor_vel[3] = vel_l;
+
+	if(LPP_VERBOSE) {
+	  std::cout << "robotMove: vel=" << vel << std::endl;
+	} 
+}
+
+void LPP::robotMoveBack(float theta_error, float distance)
+{
+	float bias = theta_error*LPP_MOVE_BIAS_DELTA;
+	bias = limitVelocity(bias, LPP_MOVE_BIAS_MAX, 0);
+	
+	float vel = distance*LPP_MOVE_DELTA + LPP_MOVE_ZERO;	
+	float vel_r = -vel*(1-bias);
+	float vel_l = -vel*(1+bias);
+	vel_r = limitVelocity(vel_r, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+	vel_l = limitVelocity(vel_l, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+	
+	motor_vel[0] = vel_r;
+	motor_vel[1] = vel_r;
+	motor_vel[2] = vel_l;
+	motor_vel[3] = vel_l;
+
+	if(LPP_VERBOSE) {
+	  std::cout << "robotMoveBack: vel=" << vel << std::endl;
+	} 
+}
+
+void LPP::robotTurn(float theta_error)
+{
+	float vel = theta_error*LPP_TURN_DELTA + LPP_TURN_ZERO;	
+	float vel_r = vel;
+	float vel_l = -vel;
+	vel_r = limitVelocity(vel_r, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+	vel_l = limitVelocity(vel_l, LPP_MOVE_VEL_MAX, LPP_MOVE_VEL_MIN);
+
+	motor_vel[0] = vel_r;
+	motor_vel[1] = vel_r;
+	motor_vel[2] = vel_l;
+	motor_vel[3] = vel_l;
+
+    if(LPP_VERBOSE) {
+        std::cout << "robotTurn" << std::endl;
+    } 
+}
+
+void LPP::robotCurve(float theta_error)
+{
+	float vel_left = 0;
+	float vel_right = 0;
+	if(theta_error>0) {
+		vel_right = LPP_TURN_VEL_MIN;
+		vel_left = -LPP_TURN_VEL_MAX;
+	} else {
+		vel_right = -LPP_TURN_VEL_MAX;
+		vel_left = LPP_TURN_VEL_MIN;
+	}
+
+	motor_vel[0] = vel_right;
+	motor_vel[1] = vel_right;
+	motor_vel[2] = vel_left;
+	motor_vel[3] = vel_left;
+	
+}
+
+float LPP::limitVelocity(float vel, float max, float min)
+{
+    if(vel>max) {
+        vel = max;
+    } else if(vel<-max) {
+        vel = -max;
+    } else if(vel<min && vel>0) {
+        vel = min;
+    } else if(vel>-min && vel<0) {
+        vel = -min;
+    }
+    return vel;  
+}
+
+float LPP::limitAngle(float angle)
+{
+    while(angle>PI) {
+        angle -= 2*PI;
+    }
+    while(angle<-PI) {
+        angle += 2*PI;
+    }
+    return angle;
+}
+
+/*
+void LPP::robotMove(float theta_error, float theta_error_integration, float distance)
 {
     float vel = VEL_MOVE_PID_KP*theta_error + VEL_MOVE_PID_KI*theta_error_integration;
+    
     vel = limitVelocity(vel, VEL_MOVE_MAX, 0);
 
     motor_vel[0] = VEL_MOVE_BIAS + vel;
@@ -332,31 +439,22 @@ void LPP::robotTurn(float theta_error)
     } 
 }
 
-float LPP::limitVelocity(float vel, float max, float min)
+void LPP::robotCurve(float theta_error)
 {
-    if(vel>max) {
-        vel = max;
-    } else if(vel<-max) {
-        vel = -max;
-    } else if(vel<min && vel>0) {
-        vel = min;
-    } else if(vel>-min && vel<0) {
-        vel = -min;
-    }
-    return vel;  
+	float vel_left = 0;
+	float vel_right = 0;
+	if(theta_error>0) {
+		vel_right = VEL_TURN_MIN;
+		vel_left = -VEL_TURN_MAX;
+	} else {
+		vel_right = -VEL_TURN_MAX;
+		vel_left = VEL_TURN_MIN;
+	}
+
+	motor_vel[0] = vel_right;
+	motor_vel[1] = vel_right;
+	motor_vel[2] = vel_left;
+	motor_vel[3] = vel_left;
+	
 }
-
-float LPP::limitAngle(float angle)
-{
-    while(angle>PI) {
-        angle -= 2*PI;
-    }
-    while(angle<-PI) {
-        angle += 2*PI;
-    }
-    return angle;
-}
-
-
-
-
+*/

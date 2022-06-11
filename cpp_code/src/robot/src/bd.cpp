@@ -29,8 +29,8 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, Map map,
 	}
 
 	// mask side sensors
-	meas[0] = 0;
-	meas[6] = 0;
+	//meas[0] = 0;
+	//meas[6] = 0;
 
 	// calc. position of measured bottles
 	std::vector<Bottle> new_bottles = calcNewBottles(map, pose, meas);
@@ -39,7 +39,7 @@ void BottleDetection::setUltrasound(std::array<int,BD_NB_SENSORS> meas, Map map,
 	addNewBottles(new_bottles);
 	
 	//	subtract one measurement number of all bottles that were not updated this round
-	ageRecordedBottles();
+	ageRecordedBottles(pose);
 	
 	if(BD_VERBOSE_SET_ULTRASOUND) {
 		ROS_INFO("bd::setUltrasound: ---- measured bottles ----");
@@ -267,10 +267,22 @@ void BottleDetection::updateRecordedBottle(Bottle &b1, Bottle &b2)
 	b2.updated = true;
 }
 
-void BottleDetection::ageRecordedBottles(void)
+void BottleDetection::ageRecordedBottles(Pose pose)
 {
 	int nb_bottles = recorded_bottles.size();
 	for(int i=0; i<nb_bottles; i++) {
+
+		// verify if bottle is in the dead angle between sensors on the side 
+		// and sensors in the front
+		int error_x = recorded_bottles[i].position.x - pose.position.x;
+		int error_y = recorded_bottles[i].position.y - pose.position.y;
+		float theta_error = abs(atan2f(error_y, error_x) - pose.heading);
+		if(BD_AGE_DEAD_ANGLE_MIN < theta_error &&  theta_error < BD_AGE_DEAD_ANGLE_MAX) {
+			recorded_bottles[i].updated = false;
+			ROS_ERROR("bd::ageRecordedBottles: do not age !");
+			continue;
+		}
+
 		// verify if bottle was updated in this cycle
 		if(!recorded_bottles[i].updated) {
 			recorded_bottles[i].nb_meas -= 1;
@@ -286,6 +298,7 @@ void BottleDetection::ageRecordedBottles(void)
 		
 		// reset recorded bool
 		recorded_bottles[i].updated = false;
+		//ROS_ERROR("bd::ageRecordedBottles: age -----------------");
 	}
 }
 

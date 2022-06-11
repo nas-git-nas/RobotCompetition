@@ -35,15 +35,34 @@
 #define LPP_MEAS_HEADING_THR 30 // in cm, above this value measurement is not taken into
 										 // account when doing heading correction
 
-#define VEL_TURN_MAX 1.0 // 3.5// in rad/s
-#define VEL_TURN_MIN 0.7 // in rad/s
+#define LPP_MOVE_VEL_MAX 3.0 // in rad/s
+#define LPP_MOVE_VEL_MIN 1.5 // in rad/s
+#define LPP_MOVE_DIST_MAX 100.0 // in cm
+#define LPP_MOVE_DIST_MIN 10.0 // in cm
+#define LPP_MOVE_DELTA ((LPP_MOVE_VEL_MAX-LPP_MOVE_VEL_MIN)/(LPP_MOVE_DIST_MAX-LPP_MOVE_DIST_MIN))
+#define LPP_MOVE_ZERO (LPP_MOVE_VEL_MIN - (LPP_MOVE_DELTA*LPP_MOVE_DIST_MIN))
+#define LPP_MOVE_BIAS_MAX 0.3 // in %, max. velocity bias depending on error in heading
+#define LPP_MOVE_BIAS_DELTA (LPP_MOVE_BIAS_MAX/LPP_TURN_ANGLE_MIN)
+
+#define LPP_TURN_VEL_MAX 1.2 // in rad/s
+#define LPP_TURN_VEL_MIN 0.6 // in rad/s
+#define LPP_TURN_ANGLE_MAX 1.571 // in rad, 90°
+#define LPP_TURN_ANGLE_MIN 0.2618 // in rad, 15°
+#define LPP_TURN_DELTA ((LPP_TURN_VEL_MAX-LPP_TURN_VEL_MIN)/(LPP_TURN_ANGLE_MAX-LPP_TURN_ANGLE_MIN))
+#define LPP_TURN_ZERO (LPP_TURN_VEL_MIN - (LPP_TURN_DELTA*LPP_TURN_ANGLE_MIN))
+
 #define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
+
+/*#define VEL_TURN_MAX 1.2 // 3.5// in rad/s
+#define VEL_TURN_MIN 0.6 // in rad/s
+
 #define VEL_TURN_PID_KP 1.0
 
 #define VEL_MOVE_MAX 3.0 // in rad/s
-#define VEL_MOVE_BIAS 1.5 // in rad/s
+#define VEL_MOVE_MIN 1.5 // in rad/s
+#define VEL_MOVE_BIAS 2.5 // in rad/s
 #define VEL_MOVE_PID_KP 1.0
-#define VEL_MOVE_PID_KI 0.0
+#define VEL_MOVE_PID_KI 0.0*/
 
 #define DEGREE2RAD 0.017453
 #define RAD2DEGREE 57.296
@@ -81,9 +100,10 @@ class LPP
 		void updateApproachVelocity(void);
 		void updatePose(void);
 		void robotStop(void);
-		void robotMove(float theta_error, float theta_error_integration);
-		void robotMoveBack(float theta_error, float theta_error_integration);
+		void robotMove(float theta_error, float distance);
+		void robotMoveBack(float theta_error, float distance);
 		void robotTurn(float theta_error);
+		void robotCurve(float theta_error);
 		float limitVelocity(float vel, float max, float min);
 		float limitAngle(float angle);
 };
