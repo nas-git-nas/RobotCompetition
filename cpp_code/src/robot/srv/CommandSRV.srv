@@ -3,9 +3,8 @@ uint16 nb_nodes
 uint16[] trajectory_x
 uint16[] trajectory_y
 uint8 stop_motor
-float32 arm_angle
-float32 basket_angle
-bool air_pump
+bool move_arm
+bool move_basket
 uint8[7] meas
 ---
 

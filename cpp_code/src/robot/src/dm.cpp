@@ -61,6 +61,10 @@ void DecisionMaker::init(Pose pose, ros::Time time)
 
 void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
+	if(DM_VERBOSE) {
+		ROS_INFO_STREAM("dm::stateMAchine: dm_state = " << dm_state);
+	}
+
 	// verifyTime
 	watchdog(bd);
 
@@ -98,22 +102,18 @@ void DecisionMaker::stateMachine(Pose pose, Map &map, BottleDetection &bd, Comma
 		} break;
 			
 		case DM_STATE_RETURN: {
-			dm_state = DM_STATE_IDL;
-			//stateReturn(pose, map, command);
+			stateReturn(pose, map, command);
 		} break;
 		
 		case DM_STATE_RECYCLE: {
-			dm_state = DM_STATE_IDL;
-			//recycle(pose, map, command);
+			recycle(pose, map, command);
 		} break;
 			
 		case DM_STATE_EMPTY_SEND: {
-			dm_state = DM_STATE_IDL;
-			//emptySend(command);
+			emptySend(command);
 		} break;
 		
 		case DM_STATE_EMPTY_WAIT: {
-			dm_state = DM_STATE_IDL;
 		} break;
 			
 		default:
@@ -128,6 +128,7 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 	static uint8_t watchdog_state = DM_STATE_IDL;
 	static int nb_pickup_repeats = 0;
 	static int nb_empty_repeats = 0;
+	static bool competition_end = false;
 	
 	// update watchdog
 	if(unsigned(watchdog_state) != unsigned(dm_state)) {
@@ -163,7 +164,7 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 				bd.clearRecordedBottles();
 				if(DM_VERBOSE_WATCHDOG) {
 					ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
-					ROS_WARN("dm::watchdog: approach -> explore");
+					ROS_WARN("dm::watchdog: approach -> move");
 				}
 			}
 		} break;
@@ -174,7 +175,7 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 				if(nb_pickup_repeats < DM_PICKUP_NB_REPEATS) {
 					dm_state = DM_STATE_PICKUP_SEND;
 					nb_pickup_repeats += 1;
-					
+					watchdog_time = ros::Time::now();
 					if(DM_VERBOSE_WATCHDOG) {
 						ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
 						ROS_WARN("dm::watchdog: pickup wait -> pickup send");
@@ -196,7 +197,8 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 				if(nb_empty_repeats < DM_EMPTY_NB_REPEATS) {
 					dm_state = DM_STATE_EMPTY_SEND;
 					nb_empty_repeats += 1;
-					
+					watchdog_time = ros::Time::now();
+
 					if(DM_VERBOSE_WATCHDOG) {
 						ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
 						ROS_WARN("dm::watchdog: emptyWait -> emptySend");
@@ -215,14 +217,16 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 	}	
 
 	// verify if it is time to return
-	ros::Duration delta_time = ros::Time::now()-start_time;
-	if(delta_time.toSec() > DM_WATCHDOG_END) {
-		dm_state = DM_STATE_RETURN;
-		if(DM_VERBOSE_WATCHDOG) {
-			ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << watchdog_duration);
-			ROS_INFO("dm::watchdog: end of competition -> return home");
-			ROS_WARN("dm::watchdog: pickup empty -> explore");
-		}		
+	if(!competition_end) {
+		ros::Duration delta_time = ros::Time::now()-start_time;
+		if(delta_time.toSec() > DM_WATCHDOG_END) {
+			competition_end = true;
+			dm_state = DM_STATE_RETURN;
+			if(DM_VERBOSE_WATCHDOG) {
+				ROS_INFO_STREAM("dm::watchdog::watchdog_duration = " << delta_time.toSec());
+				ROS_WARN("dm::watchdog: ... -> return");
+			}		
+		}
 	}
 }
 
@@ -234,9 +238,8 @@ void DecisionMaker::resetCommand(Command &command)
 	command.trajectory_y.clear();
 	command.nb_nodes = 0;
 	command.stop_motor = true;
-	command.arm_angle = 0;
-	command.basket_angle = 0;
-	command.air_pump = false;
+	command.move_arm = false;
+	command.move_basket = false;
 	dm_state = dm_state;
 }
 
@@ -296,6 +299,8 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 			bd.clearRecordedBottles();
 			
 			if(DM_VERBOSE_APPROACH) {
+				ROS_INFO_STREAM("dm::approach: nb_approach_fails=" << unsigned(nb_approach_fails)
+							<< ", nb_pickup_fails=" << unsigned(nb_pickup_fails));
 				ROS_WARN("dm::approach: approach -> explore");
 			}
 			
@@ -303,6 +308,8 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 			dm_state = DM_STATE_EXPLORE;
 			
 			if(DM_VERBOSE_APPROACH) {
+				ROS_INFO_STREAM("dm::approach: nb_approach_fails=" << unsigned(nb_approach_fails)
+							<< ", nb_pickup_fails=" << unsigned(nb_pickup_fails));
 				ROS_WARN("dm::approach: approach -> explore");
 			}
 		}
@@ -337,7 +344,12 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	
 	// verify if optimal position is reached
 	if(abs(distance-LPP_ARM_LENGTH)<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
-	
+		
+		bd.clearRecordedBottles();
+		if(DM_VERBOSE_APPROACH) {
+			ROS_INFO("dm::approach: reached optimal distance -> clear recorded bottles");
+		}
+
 		// continue only if bottle is well centered
 		if(verifyHeading(bd)) {
 			dm_state = DM_STATE_PICKUP_SEND;
@@ -407,8 +419,7 @@ bool DecisionMaker::verifyHeading(BottleDetection &bd)
 void DecisionMaker::pickupSend(Command &command)
 {
 	// set command
-	command.arm_angle = 1;
-	command.air_pump = 1;
+	command.move_arm = true;
 	
 	dm_state = DM_STATE_PICKUP_WAIT;
 	
@@ -425,7 +436,7 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 	// count nb. measurments that are not zero
 	int nb_meas = 0;
 	for(int i=1; i<6; i++) { // ignore sensors on the sides
-		if(meas[i] == 0) {
+		if(meas[i] != 0) {
 			nb_meas += 1;
 		}
 	}
@@ -434,7 +445,7 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 
 	// verify if bottle is still detected
 	if(nb_meas <= DM_PICKUP_NB_MEAS_THR) {
-		dm_state = DM_STATE_EXPLORE;
+		dm_state = DM_STATE_MOVE;
 		nb_collected_bottles += 1;
 		nb_approach_fails = 0;
 		nb_pickup_fails = 0;
@@ -442,7 +453,7 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 				
 		if(DM_VERBOSE_PICKUP) {
 			ROS_INFO_STREAM("dm::pickupVerify::nb_meas = " << nb_meas << " -> success");
-			ROS_WARN("dm::pickupVerify: pickupVerify -> explore");
+			ROS_WARN("dm::pickupVerify: pickupVerify -> move");
 		}
 	} else {
 		dm_state = DM_STATE_APPROACH;
@@ -450,6 +461,8 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 		
 		if(DM_VERBOSE_PICKUP) {
 			ROS_INFO_STREAM("dm::pickupVerify::nb_meas = " << nb_meas << " -> fail -> approach");
+			ROS_INFO_STREAM("dm::pickupVerify: nb_approach_fails=" << unsigned(nb_approach_fails)
+						 << ", nb_pickup_fails=" << unsigned(nb_pickup_fails));
 			ROS_WARN("dm::pickupVerify: pickupVerify -> approach");
 		}
 	}
@@ -457,7 +470,8 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 	// move on if nb. of fails is too high
 	if(nb_pickup_fails >= DM_PICKUP_MAX_NB_FAILS) {
 		if(DM_VERBOSE_PICKUP) {
-			ROS_INFO_STREAM("dm::pickupVerify::nb_fails = " << nb_pickup_fails << " -> move on");
+			ROS_INFO_STREAM("dm::pickupVerify: nb_approach_fails=" << unsigned(nb_approach_fails)
+					 << ", nb_pickup_fails = " << unsigned(nb_pickup_fails));
 			ROS_WARN("dm::pickupVerify: pickupVerify -> move");
 		}
 		
@@ -486,7 +500,8 @@ void DecisionMaker::stateReturn(Pose pose, Map &map, Command &command)
 		}
 	}	
 	
-	// TODO: what if recycling area is not reachable???			
+	// move set point towards center if it is not reachable
+	sp = updateReturnSP(sp, map);			
 	
 	// calc. trajectory and set command
 	GPP(pose, map, sp, command);	
@@ -508,6 +523,9 @@ void DecisionMaker::recycle(Pose pose, Map &map, Command &command)
 		}
 	}
 	
+	// move set point towards center if it is not reachable
+	sp = updateReturnSP(sp, map);
+
 	// calc. trajectory and set command
 	GPP(pose, map, sp, command);	
 }
@@ -515,7 +533,7 @@ void DecisionMaker::recycle(Pose pose, Map &map, Command &command)
 void DecisionMaker::emptySend(Command &command)
 {
 	// set command
-	command.basket_angle = 1;
+	command.move_basket = 1;
 	
 	dm_state = DM_STATE_EMPTY_WAIT;
 	
@@ -536,13 +554,6 @@ bool DecisionMaker::updateSP(Pose pose, Map &map)
 	
 	// verify if current set point is reachable
 	while(map.verifyDilatedMapPoint(sps[r_idx][sp_idx], 1, 1)) {
-		/*int error_x = sps[r_idx][sp_idx].x - pose.position.x;
-		int error_y = sps[r_idx][sp_idx].y - pose.position.y;		
-		float theta = limitAngle(atan2f(error_y, error_x));
-		
-		// move set point by DM_SP_CHANGE in direction of robot
-		sps[r_idx][sp_idx].x -= cos(theta)*DM_SP_CHANGE;
-		sps[r_idx][sp_idx].y -= sin(theta)*DM_SP_CHANGE;*/
 		
 		// update to next set point
 		if(updateSPIndices(pose)) {
@@ -550,6 +561,17 @@ bool DecisionMaker::updateSP(Pose pose, Map &map)
 		}
 	}
 	return false;
+}
+
+cv::Point DecisionMaker::updateReturnSP(cv::Point sp, Map &map)
+{
+	// verify if current set point is reachable, otherwise move it towards center
+	while(map.verifyDilatedMapPoint(sp, 1, 1)) {		
+		sp.x += 1;
+		sp.y += 1;
+	}
+	
+	return sp;
 }
 
 bool DecisionMaker::updateSPIndices(Pose pose)
@@ -580,15 +602,6 @@ void DecisionMaker::GPP(Pose pose, Map &map, cv::Point destination, Command &com
 	
 	if(map.calcPolygons(pose.position, destination)) {
 		ROS_ERROR("DecisionMaker::GPP: too many large obstacles");
-		//TODO: reset map
-		/*std_srvs::Trigger reset_map_srv;
-		if(client_reset_hector.call(reset_map_srv)) {
-			if(DM_VERBOSE_GPP) {
-				ROS_INFO_STREAM("main::GPP: reset hector map");
-			}
-		} else {
-			ROS_ERROR("main::GPP: reset_map_srv failed");
-		}*/
 	}
 	std::vector<cv::Point> nodes = map.getNodes();
 
@@ -614,8 +627,9 @@ void DecisionMaker::GPP(Pose pose, Map &map, cv::Point destination, Command &com
   		return;
 
 	}
-	//map.printMap();
-
+	if(DM_VERBOSE_GPP) {
+		ROS_INFO("dm::GPP: exit");
+	}
 }
 
 int DecisionMaker::calcDistance(cv::Point p1, cv::Point p2)

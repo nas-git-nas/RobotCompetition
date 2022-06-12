@@ -21,8 +21,7 @@
 #define MAP_OFFSET_X int(MAP_SIZE*MAP_START_X)
 #define MAP_OFFSET_Y int(MAP_SIZE*MAP_START_Y)
 #define MAP_M2PIXEL float(1/MAP_RESOLUTION)
-//TODO: verify
-#define ROBOT_CENTER_OFFSET 15
+#define ROBOT_CENTER_OFFSET 14
 
 /*
 * ----- GLOBAL CLASSES -----
@@ -35,9 +34,8 @@ LPP lpp;
 */
 Pose pose;
 bool turn_hector_off = false;
-float arm_motor = 0;
-float air_pump = 0;
-float basket_motor = 0;
+float move_arm = 0;
+float move_basket = 0;
 
 /*
 * ----- CALLBACK FUNCTION DEFINITIONS -----
@@ -212,10 +210,9 @@ bool setCommandSRV(robot::CommandSRV::Request &req,
 	// set current state inside LPP
 	lpp.set_dm_state(req.dm_state);
 	
-	//
-	arm_motor = float( req.arm_angle );
-	air_pump = float( req.air_pump );
-	basket_motor = float( req.basket_angle );
+	// set arm and basket commands
+	move_arm = float( req.move_arm );
+	move_basket = float( req.move_basket );
 	
 	if(req.stop_motor) {
 		lpp.stopMotors();
@@ -261,20 +258,23 @@ void controllerCommandMotors(ros::Publisher& pub_motor_vel, bool stop_robot)
 		}
 	}
 	
-	// define other commands
-	msg_rasp2ard.data.push_back(arm_motor);
-	msg_rasp2ard.data.push_back(basket_motor);
-	msg_rasp2ard.data.push_back(air_pump);
+	// define arm and basket commands
+	msg_rasp2ard.data.push_back(move_arm);
+	msg_rasp2ard.data.push_back(move_basket);
 	
 	// send motor commands to arduino
 	pub_motor_vel.publish(msg_rasp2ard);
+	
+	// reset arm and basket commands (you do not want to sent them twice)
+	move_arm = 0;
+	move_basket = 0;
 
 	if(CONTROLLER_VERBOSE_MOTORS) {
   		ROS_INFO_STREAM("LPP::motor_vel: (" << msg_rasp2ard.data[0] << "," 
   					 			<< msg_rasp2ard.data[1] << "," << msg_rasp2ard.data[2] 
   					 			<< "," << msg_rasp2ard.data[3] << ")");
-  		ROS_INFO_STREAM("LPP: arm_motor=" << msg_rasp2ard.data[4] << ", basket_motor=" 
-  					 			<< msg_rasp2ard.data[5] << ", air_pump=" << msg_rasp2ard.data[6]);
+  		ROS_INFO_STREAM("LPP: move_arm = " << msg_rasp2ard.data[4] << ", move_basket = " 
+  					 			<< msg_rasp2ard.data[5]);
 	}	
 }
 

@@ -62,6 +62,7 @@ std::array<float,4> LPP::getMotorVelocity(void)
 		case DM_STATE_EXPLORE:
 		case DM_STATE_MOVE:
 		case DM_STATE_RETURN:
+		case DM_STATE_RECYCLE:
 			updateMotorVelocity();
 			break;
 		case DM_STATE_APPROACH:	
@@ -95,8 +96,6 @@ void LPP::updateMotorVelocity(void)
 	//TODO: merge function with updateApproachVelocity
 
     static bool moving_state = false;
-    static float theta_error_integration = 0;
-    static ros::Time time_update_error = ros::Time::now();
     
     // update pose and get time
     updatePose();
@@ -108,9 +107,6 @@ void LPP::updateMotorVelocity(void)
     // verify distance to next set-point and update set-point list if necessary
     float distance = sqrtf(error_x*error_x + error_y*error_y);
     while(distance < SET_POINT_DISTANCE_THRESHOLD) {
-        // reset error integration
-        theta_error_integration = 0; 
-        time_update_error = ros::Time::now();
 
         // verify if destination is reached
         if(set_points.size() <= 1) {
@@ -140,17 +136,10 @@ void LPP::updateMotorVelocity(void)
     } else {
         // calc. error in orientation (theta) and integrated theta
         float theta_error = limitAngle(atan2f(error_y, error_x) - pose[2]);
-        
-        // TODO: test error integration
-        ros::Time current_time = ros::Time::now();
-        ros::Duration delta_time_error = current_time-time_update_error;
-        time_update_error = current_time;
-        theta_error_integration += delta_time_error.toSec()*theta_error;
 
         if(LPP_VERBOSE) {
             std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error 
-            			 << "), atan=" << atan2f(error_y, error_x) 
-                      <<  ", theta_error_integration: " << theta_error_integration << std::endl;
+            			 << "), atan=" << atan2f(error_y, error_x) << std::endl;
         } 
 
         // verify if state should be changed: turning on spot or move to next set-point
@@ -177,8 +166,6 @@ void LPP::updateApproachVelocity(void)
 	} 
 
 	static bool moving_state = false;
-	static float theta_error_integration = 0;
-	static ros::Time time_update_error = ros::Time::now();
 
 	// update pose
 	updatePose();
@@ -193,8 +180,7 @@ void LPP::updateApproachVelocity(void)
 
 	if(LPP_VERBOSE) {
 		std::cout <<  "error = (" << error_x << "," << error_y << "," << theta_error 
-					 << "), atan=" << atan2f(error_y, error_x) 
-		          <<  ", theta_error_integration: " << theta_error_integration << std::endl;
+					 << "), atan=" << atan2f(error_y, error_x) << std::endl;
 	}
 	
 	// verify if bottle is at optimal position
@@ -252,7 +238,7 @@ void LPP::updatePose()
 
 	// calc. change in position, in grid (cm)
 	float delta_pos = delta_time.toSec() * WHEEL_RADIUS * M2GRID 
-	* (motor_vel[0]+motor_vel[1]+motor_vel[2]+motor_vel[3])/4;
+	* (motor_vel[0]+motor_vel[1]+motor_vel[2]+motor_vel[3])/4*VEL_MOVE_ADJUSTMENT;
 
 	// calc. change in heading, in rad
 	float delta_theta = 0;

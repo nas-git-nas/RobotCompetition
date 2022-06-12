@@ -20,20 +20,19 @@
 #define DM_H
 
 #define DM_SP_REACHED_THR 10 //cm, should be higher than DM_SP_CHANGE
-//#define DM_SP_CHANGE 5 //cm, how much set point should be moved towards robot if it is not reachable
 
-#define DM_EXPLORE_NB_MEAS_THR 		2
-#define DM_APPROACH_MAX_NB_FAILS   	3
-#define DM_PICKUP_MAX_NB_FAILS   	3
+#define DM_EXPLORE_NB_MEAS_THR 		1
+#define DM_APPROACH_MAX_NB_FAILS   	2
+#define DM_PICKUP_MAX_NB_FAILS   	2
 #define DM_PICKUP_NB_MEAS_THR			1
-#define DM_RECYCLING_OFFSET			20
+#define DM_RECYCLING_OFFSET			25
 
-#define DM_WATCHDOG_EXPLORE			5 // in s, clear nb_pickup_fails and nb_approach_fails 
-#define DM_WATCHDOG_MOVE				8 // in s, go to state explore
+#define DM_WATCHDOG_EXPLORE			8 // in s, clear nb_pickup_fails and nb_approach_fails 
+#define DM_WATCHDOG_MOVE				12 // in s, go to state explore
 #define DM_WATCHDOG_APPROACH			30 // in s, go to state move
 #define DM_WATCHDOG_PICKUP				5 // in s, length of arm movement when picking up bottles
 #define DM_WATCHDOG_EMPTY 				5 // in s, length of basket movement when emptying it
-#define DM_WATCHDOG_END					500 // in s, time before return at the end
+#define DM_WATCHDOG_END					900 // in s, time before return at the end
 
 #define DM_PICKUP_NB_REPEATS			2
 #define DM_EMPTY_NB_REPEATS			2
@@ -84,6 +83,7 @@ class DecisionMaker
 		void emptySend(Command &command);
 		bool updateSP(Pose pose, Map &map);
 		bool updateSPIndices(Pose pose);
+		cv::Point updateReturnSP(cv::Point sp, Map &map);
 		void GPP(Pose pose, Map &map, cv::Point destination, Command &command);
 		int calcDistance(cv::Point p1, cv::Point p2);
 		float limitAngle(float angle);

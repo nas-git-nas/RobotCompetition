@@ -16,7 +16,7 @@
 // main.cpp
 #define MAIN_VERBOSE 					true
 #define MAIN_VERBOSE_BD 				false
-#define MAIN_VERBOSE_COMMAND 			true
+#define MAIN_VERBOSE_COMMAND 			false
 
 // map.cpp
 #define MAP_VERBOSE_RAW_DATA 			false
@@ -25,10 +25,10 @@
 
 #define MAP_DRAW_MAP true
 
-#define MAP_SIZE				1000 // in cm, map size in pixels
+#define MAP_SIZE				1200 // in cm, map size in pixels
 #define MAP_RESOLUTION 		0.01 // one pixel = 1cm
-#define MAP_START_X 			0.09 // starting position in MAP_SIZE precentage
-#define MAP_START_Y 			0.09
+#define MAP_START_X 			0.185 // 185cm, starting position in MAP_SIZE precentage
+#define MAP_START_Y 			0.175 // 175cm
 
 // visibility.cpp
 #define VISIBILITY_VERBOSE 			false
@@ -51,10 +51,10 @@
 
 // bd.cpp
 #define BD_VERBOSE_CALC 				false
-#define BD_VERBOSE_SET_ULTRASOUND	false
-#define BD_VERBOSE_GET_BOTTLE			true
+#define BD_VERBOSE_SET_ULTRASOUND	true
+#define BD_VERBOSE_GET_BOTTLE			false
 
-#define BD_ULTRASOUND_MAX_DISTANCE 50
+#define BD_ULTRASOUND_MAX_DISTANCE 60
 
 // dm.cpp
 #define DM_VERBOSE 						false
@@ -97,9 +97,8 @@ struct Command {
 	std::vector<uint16_t> trajectory_y;
 	int nb_nodes;
 	bool stop_motor = true;
-	float arm_angle;
-	float basket_angle;
-	bool air_pump = false;
+	bool move_arm = false;
+	bool move_basket = false;
 };
 
 #endif // MAIN_H

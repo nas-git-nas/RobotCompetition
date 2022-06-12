@@ -240,24 +240,28 @@ bool Map::verifyBottleMapPoint(cv::Point p, int neighborhood, int threshold)
 	
 	// verify how many black pixels are in neighborhood of point p
 	int nb_black_pixels = 0;
+	int x, y;
 	for(int k=0; k<2*neighborhood+1; k++) {
 	
 		// outside map
-		if(k<0 || k>MAP_SIZE-1) { continue; }
+		y = p.y-neighborhood+k;
+		if(x<0 || x>MAP_SIZE-1) { continue; }
 		
 		for( int l=0; l<2*neighborhood+1; l++) {
 		
 			// outside map
-			if(l<0 || l>MAP_SIZE-1) { continue; }
+			x = p.x-neighborhood+l;
+			if(x<0 || x>MAP_SIZE-1) { continue; }
 			
 			// Invert axes because hector slam and polygons have x-axes in horizontal plane and 
 			// the y-axes in the vertical plane. However, for cv::Mat it is the inverse!
-			if(unsigned(map_bottle.at<uint8_t>(p.y-neighborhood+k, p.x-neighborhood+l)) == 0) {
+			if(unsigned(map_bottle.at<uint8_t>(y, x)) == 0) {
 				nb_black_pixels += 1;
 			}
 		}
 	}
 	
+
 	// verify if number of black pixels exceed threshold
 	if(nb_black_pixels >= threshold) {
 		
@@ -277,19 +281,22 @@ bool Map::verifyDilatedMapPoint(cv::Point p, int neighborhood, int threshold)
 	
 	// verify how many black pixels are in neighborhood of point p
 	int nb_black_pixels = 0;
+	int x, y;
 	for(int k=0; k<2*neighborhood+1; k++) {
 	
 		// outside map
+		y = p.y-neighborhood+k;
 		if(k<0 || k>MAP_SIZE-1) { continue; }
 		
 		for( int l=0; l<2*neighborhood+1; l++) {
 		
 			// outside map
+			x = p.x-neighborhood+l;
 			if(l<0 || l>MAP_SIZE-1) { continue; }
 			
 			// Invert axes because hector slam and polygons have x-axes in horizontal plane and 
 			// the y-axes in the vertical plane. However, for cv::Mat it is the inverse!
-			if(unsigned(map_dilated_robot.at<uint8_t>(p.y-neighborhood+k, p.x-neighborhood+l)) == 0) {
+			if(unsigned(map_dilated_robot.at<uint8_t>(y, x)) == 0) {
 				nb_black_pixels += 1;
 			}
 		}

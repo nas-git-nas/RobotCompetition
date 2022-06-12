@@ -24,7 +24,7 @@
 #define TURNING_UPPER_THRESHOLD 0.3491 // in rad, 20°
 #define TURNING_LOWER_THRESHOLD 0.2618 // in rad, 15°
 
-#define LPP_BOTTLE_DIST_THR 3 // in cm
+#define LPP_BOTTLE_DIST_THR 5 // in cm
 #define LPP_BOTTLE_ANGLE_THR 0.0873 // rad, equal to 5 degrees
 #define APPROACH_UPPER_THRESHOLD 0.1745 // in rad, 10°
 #define APPROACH_LOWER_THRESHOLD 0.0873 // in rad, 5°
@@ -34,10 +34,11 @@
 #define LPP_MEAS_HEADING_ANGLE 0.0873 // rad, turn 10 degrees to correct heading 
 #define LPP_MEAS_HEADING_THR 30 // in cm, above this value measurement is not taken into
 										 // account when doing heading correction
-#define VEL_TURN_ADJUSTMENT 1.7 // empirical factor to match tunring
+#define VEL_TURN_ADJUSTMENT 1.2 // empirical factor to match tunring
+#define VEL_MOVE_ADJUSTMENT 0.8
 
-#define LPP_MOVE_VEL_MAX 2.5 // in rad/s
-#define LPP_MOVE_VEL_MIN 1.5 // in rad/s
+#define LPP_MOVE_VEL_MAX 2.0 // in rad/s
+#define LPP_MOVE_VEL_MIN 1.7 // in rad/s
 #define LPP_MOVE_DIST_MAX 100.0 // in cm
 #define LPP_MOVE_DIST_MIN 10.0 // in cm
 #define LPP_MOVE_DELTA ((LPP_MOVE_VEL_MAX-LPP_MOVE_VEL_MIN)/(LPP_MOVE_DIST_MAX-LPP_MOVE_DIST_MIN))
@@ -45,8 +46,8 @@
 #define LPP_MOVE_BIAS_MAX 0.15 // in %, max. velocity bias depending on error in heading
 #define LPP_MOVE_BIAS_DELTA (LPP_MOVE_BIAS_MAX/LPP_TURN_ANGLE_MIN)
 
-#define LPP_APPR_VEL_MAX 1.5 // in rad/s
-#define LPP_APPR_VEL_MIN 1.0 // in rad/s
+#define LPP_APPR_VEL_MAX 1.2 // in rad/s
+#define LPP_APPR_VEL_MIN 0.8 // in rad/s
 #define LPP_APPR_DIST_MAX 50.0 // in cm
 #define LPP_APPR_DIST_MIN 10.0 // in cm
 #define LPP_APPR_DELTA ((LPP_APPR_VEL_MAX-LPP_APPR_VEL_MIN)/(LPP_APPR_DIST_MAX-LPP_APPR_DIST_MIN))
@@ -54,8 +55,8 @@
 #define LPP_APPR_BIAS_MAX 0.2 // in %, max. velocity bias depending on error in heading
 #define LPP_APPR_BIAS_DELTA (LPP_APPR_BIAS_MAX/LPP_TURN_ANGLE_MIN)
 
-#define LPP_TURN_VEL_MAX 0.8 // in rad/s
-#define LPP_TURN_VEL_MIN 0.6 // in rad/s
+#define LPP_TURN_VEL_MAX 0.7 // in rad/s
+#define LPP_TURN_VEL_MIN 0.5 // in rad/s
 #define LPP_TURN_ANGLE_MAX 1.571 // in rad, 90°
 #define LPP_TURN_ANGLE_MIN 0.2618 // in rad, 15°
 #define LPP_TURN_DELTA ((LPP_TURN_VEL_MAX-LPP_TURN_VEL_MIN)/(LPP_TURN_ANGLE_MAX-LPP_TURN_ANGLE_MIN))

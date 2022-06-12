@@ -53,15 +53,15 @@ class BottleDetection
 		std::array<int,BD_NB_SENSORS> bottle_meas;
 		
 		// pose of sensor with respect to robot: {x,y,angle}
-		float dist_to_robot[BD_NB_SENSORS][3] = {	{2.0,19.0,0.7854},     // most left one
+		float dist_to_robot[BD_NB_SENSORS][3] = {	{7.0,18.0,0.7854},     // most left one
 																{25.0,15.4,0.2618},
 																{23.5,7.8,0.0},
 																{23.5, 0,0.0},
 																{23.5,-7.8,0.0},
 																{25.0,-15.4,-0.2618},
-																{2.0,-19.0,-1.5708} }; // most right one
+																{7.0,-18.0,-0.7854} }; // most right one
 		// max. sensor distance, if higher measurement is masked with 0
-		int max_meas_distance[BD_NB_SENSORS] = {40, 50, 60, 60, 60, 50, 40};
+		int max_meas_distance[BD_NB_SENSORS] = {50, 50, 60, 60, 60, 50, 50};
 		
 		/*** FUNCTIONS ***/
 		std::vector<Bottle> calcNewBottles(Map map, Pose pose,
