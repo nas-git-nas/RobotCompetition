@@ -27,8 +27,7 @@
 
 #define MAP_SIZE				1200 // in cm, map size in pixels
 #define MAP_RESOLUTION 		0.01 // one pixel = 1cm
-#define MAP_START_X 			0.185 // 185cm, starting position in MAP_SIZE precentage
-#define MAP_START_Y 			0.175 // 175cm
+
 
 // visibility.cpp
 #define VISIBILITY_VERBOSE 			false
@@ -51,7 +50,7 @@
 
 // bd.cpp
 #define BD_VERBOSE_CALC 				false
-#define BD_VERBOSE_SET_ULTRASOUND	true
+#define BD_VERBOSE_SET_ULTRASOUND	false
 #define BD_VERBOSE_GET_BOTTLE			false
 
 #define BD_ULTRASOUND_MAX_DISTANCE 60

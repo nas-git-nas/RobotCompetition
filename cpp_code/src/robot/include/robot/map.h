@@ -19,8 +19,8 @@
 
 #define MAP_BRICK_LENGTH 30 // cm
 #define MAP_BRICK_WIDTH 15 // cm
-#define MAP_DILATION_KERNEL 60 // cm, dilation/expansion of obstacles
-#define MAP_BOTTLE_KERNEL 30 // cm, dilation of obstacles for bottle map
+#define MAP_DILATION_KERNEL 65 // cm, dilation/expansion of obstacles
+#define MAP_BOTTLE_KERNEL 10 // cm, dilation of obstacles for bottle map
 
 #define MAP_POLYGON_MIN_SIZE 200 // cm, min. size of polygon to be not ignored
 #define MAP_POLYGON_MAX_SIZE ((2*MAP_DILATION_KERNEL+MAP_BRICK_LENGTH) \

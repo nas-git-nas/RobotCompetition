@@ -28,14 +28,19 @@
 #define DM_RECYCLING_OFFSET			25
 
 #define DM_WATCHDOG_EXPLORE			8 // in s, clear nb_pickup_fails and nb_approach_fails 
-#define DM_WATCHDOG_MOVE				12 // in s, go to state explore
+#define DM_WATCHDOG_MOVE				8 // in s, go to state explore
 #define DM_WATCHDOG_APPROACH			30 // in s, go to state move
 #define DM_WATCHDOG_PICKUP				5 // in s, length of arm movement when picking up bottles
 #define DM_WATCHDOG_EMPTY 				5 // in s, length of basket movement when emptying it
 #define DM_WATCHDOG_END					900 // in s, time before return at the end
 
-#define DM_PICKUP_NB_REPEATS			2
-#define DM_EMPTY_NB_REPEATS			2
+#define DM_PICKUP_NB_REPEATS			1
+#define DM_EMPTY_NB_REPEATS			1
+
+#define DM_RETURN_POSITION_X			150 // in cm, x position from bottom left corner
+#define DM_RETURN_POSITION_Y			150 // in cm, y position from bottom left corner
+#define DM_RECYCLE_POSITION_X			175 // in cm
+#define DM_RECYCLE_POSITION_Y			175 // in cm
 
 
 // class containing map
@@ -47,7 +52,7 @@ class DecisionMaker
 		
 		/*** FUNCTIONS ***/
 		std::vector<int> getShortestPath(void);
-		void init(Pose pose, ros::Time time);
+		void init(Pose pose, ros::Time time, int time_offset);
 		void stateMachine(Pose pose, Map &map, BottleDetection &bd, Command &command);
 		void resetCommand(Command &command);
 
@@ -59,6 +64,7 @@ class DecisionMaker
 		uint8_t r_idx = 0; // round index
 		uint8_t sp_idx = 0; // round index
 		ros::Time start_time;
+		ros::Duration starting_time_offset; // time already passed before starting the node
 		cv::Point start_position;
 		Bottle pickup_bottle;
 		uint8_t nb_collected_bottles = 0;

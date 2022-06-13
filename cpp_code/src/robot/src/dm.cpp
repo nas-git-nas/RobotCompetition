@@ -22,36 +22,35 @@ std::vector<int> DecisionMaker::getShortestPath(void)
 	return dijkstra.getShortestPath();
 }
 
-void DecisionMaker::init(Pose pose, ros::Time time)
+void DecisionMaker::init(Pose pose, ros::Time time, int time_offset)
 {
 
 	r_idx = 0;
 	sp_idx = 0;
-
-	cv::Point first_point;
-	cv::Point second_point;
-	cv::Point third_point;
+	
+	int x = 175;
+	int y = 175;
+	cv::Point p11(x+250,y), p12(x+450,y), p13(x+650,y), p14(x+650,y+100), p15(x+450,y+100),
+			p16(x+250,y+100), p17(x,y);
 #ifdef DEBUG_FAKE_MAP
-	first_point.x = 500; // 550; //pose.position.x + 200;
-	first_point.y = 200; //200; //pose.position.y;
-#else
-	first_point.x = pose.position.x + 150;
-	first_point.y = pose.position.y;
-	second_point.x = pose.position.x + 350;
-	second_point.y = pose.position.y;
-	third_point.x = pose.position.x;
-	third_point.y = pose.position.y;
+	p11.x = 500; // 550; //pose.position.x + 200;
+	p11.y = 200; //200; //pose.position.y;
 #endif
 
 	std::vector<cv::Point> first_round;
-	first_round.push_back(first_point);
-	first_round.push_back(second_point);
-	//first_round.push_back(third_point);
+	first_round.push_back(p11);
+	first_round.push_back(p12);
+	first_round.push_back(p13);
+	first_round.push_back(p14);
+	first_round.push_back(p15);
+	first_round.push_back(p16);
+	first_round.push_back(p17);
 	
 	sps.push_back(first_round);
 	
 	dm_state = DM_STATE_EXPLORE;
 	start_time = time;
+	starting_time_offset = ros::Duration(time_offset);
 	start_position = pose.position;
 	nb_collected_bottles = 0;
 	nb_approach_fails = 0;
@@ -219,6 +218,7 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 	// verify if it is time to return
 	if(!competition_end) {
 		ros::Duration delta_time = ros::Time::now()-start_time;
+		delta_time -= starting_time_offset;
 		if(delta_time.toSec() > DM_WATCHDOG_END) {
 			competition_end = true;
 			dm_state = DM_STATE_RETURN;
@@ -281,6 +281,12 @@ void DecisionMaker::move(Pose pose, Map &map, Command &command)
 
 void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &command)
 {
+	// verify if current set point is reached while approaching, if yes then update it
+	if(updateSP(pose, map)) {
+		dm_state = DM_STATE_RETURN;
+		return;
+	}
+
 	// get best bottle
 	Bottle bottle = bd.getBestBottle(map);
 	
@@ -301,7 +307,7 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 			if(DM_VERBOSE_APPROACH) {
 				ROS_INFO_STREAM("dm::approach: nb_approach_fails=" << unsigned(nb_approach_fails)
 							<< ", nb_pickup_fails=" << unsigned(nb_pickup_fails));
-				ROS_WARN("dm::approach: approach -> explore");
+				ROS_WARN("dm::approach: approach -> move");
 			}
 			
 		} else {
@@ -445,7 +451,7 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 
 	// verify if bottle is still detected
 	if(nb_meas <= DM_PICKUP_NB_MEAS_THR) {
-		dm_state = DM_STATE_MOVE;
+		dm_state = DM_STATE_EXPLORE;
 		nb_collected_bottles += 1;
 		nb_approach_fails = 0;
 		nb_pickup_fails = 0;
@@ -453,7 +459,7 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 				
 		if(DM_VERBOSE_PICKUP) {
 			ROS_INFO_STREAM("dm::pickupVerify::nb_meas = " << nb_meas << " -> success");
-			ROS_WARN("dm::pickupVerify: pickupVerify -> move");
+			ROS_WARN("dm::pickupVerify: pickupVerify -> explore");
 		}
 	} else {
 		dm_state = DM_STATE_APPROACH;
@@ -488,8 +494,8 @@ void DecisionMaker::stateReturn(Pose pose, Map &map, Command &command)
 	cv::Point sp;
 
 	// go corner position in recycling area
-	sp.x = start_position.x - DM_RECYCLING_OFFSET;
-	sp.y = start_position.y - DM_RECYCLING_OFFSET;	
+	sp.x = DM_RETURN_POSITION_X;
+	sp.y = DM_RETURN_POSITION_Y;	
 	
 	// verify if position is reached
 	if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {
@@ -512,8 +518,8 @@ void DecisionMaker::recycle(Pose pose, Map &map, Command &command)
 	cv::Point sp;
 
 	// go corner position in recycling area
-	sp.x = start_position.x;
-	sp.y = start_position.y;	
+	sp.x = DM_RECYCLE_POSITION_X;
+	sp.y = DM_RECYCLE_POSITION_Y;	
 	
 	// verify if position is reached
 	if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {

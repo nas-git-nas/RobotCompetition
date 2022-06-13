@@ -1,5 +1,7 @@
 <launch>
 
+    <param name="starting_time_offset" type="int" value="2" />
+
 	<include file="$(find rplidar_ros)/launch/rplidar.launch"/>
 	
 	<include file="$(find hector_slam_launch)/launch/tutorial_headless.launch"/>

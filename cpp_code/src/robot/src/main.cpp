@@ -81,6 +81,14 @@ int main(int argc, char **argv)
 	ros::ServiceClient client_reset_hector = 
 	 				n.serviceClient<robot::SetTrajectorySRV>("reset_map");
 	
+	// retrieve ros parameters
+	int starting_time_offset;
+	if (n.getParam("starting_time_offset", starting_time_offset)) {
+		ROS_INFO("main: got param starting_time_offset");
+	} else {
+		ROS_ERROR("main: failed to get param starting_time_offset");
+		starting_time_offset = 0;
+	}
 	
 	
 	// measure start time
@@ -93,7 +101,7 @@ int main(int argc, char **argv)
 
 	// current pose
 	pose = getPoseSRV(client_get_pose);
-	dm.init(pose, start_time);
+	dm.init(pose, start_time, starting_time_offset);
 
 	
 	// define command and send init. command

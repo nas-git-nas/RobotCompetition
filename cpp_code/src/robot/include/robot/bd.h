@@ -16,8 +16,7 @@
 #define BD_H
 
 #define BD_NB_SENSORS 7
-#define BD_SEARCH_NEIGHBORHOUD 20 // search in this environment for obstacles
-								  			// [x/y - BD_SEARCH_RANGE, x/y + BD_SEARCH_RANGE]
+#define BD_SEARCH_NEIGHBORHOUD 15 // search in this environment for obstacles								  			// [x/y - BD_SEARCH_RANGE, x/y + BD_SEARCH_RANGE]
 #define BD_SEARCH_NB_PIXEL_THR 1 // in neighborhoud there have to be at least this amount of pixels
 											// such that it is concidered as occupied
 #define BD_BOTTLE_THR 30 // in cm, maximal distance at which two measurements are

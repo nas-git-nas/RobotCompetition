@@ -245,7 +245,7 @@ bool Map::verifyBottleMapPoint(cv::Point p, int neighborhood, int threshold)
 	
 		// outside map
 		y = p.y-neighborhood+k;
-		if(x<0 || x>MAP_SIZE-1) { continue; }
+		if(y<0 || y>MAP_SIZE-1) { continue; }
 		
 		for( int l=0; l<2*neighborhood+1; l++) {
 		

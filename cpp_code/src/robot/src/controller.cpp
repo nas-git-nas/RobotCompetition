@@ -17,9 +17,10 @@
 #include "main.h"
 #include "lpp.h"
 
-
-#define MAP_OFFSET_X int(MAP_SIZE*MAP_START_X)
-#define MAP_OFFSET_Y int(MAP_SIZE*MAP_START_Y)
+#define MAP_START_X 			0.154 // 185cm, starting position in MAP_SIZE precentage
+#define MAP_START_Y 			0.146 // 175cm, must be same than for hector mapping
+//#define MAP_OFFSET_X int(MAP_SIZE*MAP_START_X)
+//#define MAP_OFFSET_Y int(MAP_SIZE*MAP_START_Y)
 #define MAP_M2PIXEL float(1/MAP_RESOLUTION)
 #define ROBOT_CENTER_OFFSET 14
 
@@ -36,6 +37,8 @@ Pose pose;
 bool turn_hector_off = false;
 float move_arm = 0;
 float move_basket = 0;
+int map_offset_x;
+int map_offset_y;
 
 /*
 * ----- CALLBACK FUNCTION DEFINITIONS -----
@@ -93,6 +96,24 @@ int main(int argc, char **argv)
 	ros::ServiceClient client_pause_hector = 
 	 								n.serviceClient<robot::SetPoseSRV>("pause_hector");
 
+	// retrieve parameters
+	double map_start_x, map_start_y;
+	if (n.getParam("/hector_mapping/map_start_x", map_start_x)) {
+		ROS_INFO("controller: got param map_start_x");
+	} else {
+		ROS_ERROR("controller: failed to get param map_start_x");
+		map_start_x = MAP_START_X;
+	}
+	if (n.getParam("/hector_mapping/map_start_y", map_start_y)) {
+		ROS_INFO("controller: got param map_start_y");
+	} else {
+		ROS_ERROR("controller: failed to get param map_start_y");
+		map_start_y = MAP_START_Y;
+	}
+
+	// set offset with respect to map border
+	map_offset_x = int(MAP_SIZE*map_start_x);
+	map_offset_y = int(MAP_SIZE*map_start_y);
 				
 	ros::Duration(2).sleep();
 
@@ -103,9 +124,7 @@ int main(int argc, char **argv)
 			ROS_INFO_STREAM("\n----Controller: " << counter);
 		}
 		
-		controllerCommandMotors(pub_motor_vel, false);
-		//controllerProtectHector(client_pause_hector);
-		//testIMU();
+		//controllerCommandMotors(pub_motor_vel, false);
   		
 		ros::spinOnce();
       loop_rate.sleep();
@@ -125,8 +144,8 @@ void poseCB(const geometry_msgs::PoseStamped::ConstPtr& msg)
 	float new_pose[3] = {0.0,0.0,0.0};
 
 	// convert position in meters to pixels and subtract offset of LIDAR
-	new_pose[0] = float(msg->pose.position.x*MAP_M2PIXEL + MAP_OFFSET_X - ROBOT_CENTER_OFFSET);
-	new_pose[1] = float(msg->pose.position.y*MAP_M2PIXEL + MAP_OFFSET_Y);
+	new_pose[0] = float(msg->pose.position.x*MAP_M2PIXEL + map_offset_x - ROBOT_CENTER_OFFSET);
+	new_pose[1] = float(msg->pose.position.y*MAP_M2PIXEL + map_offset_y);
 
 	// convert quaternions to radians
 	tf::Quaternion q(msg->pose.orientation.x, msg->pose.orientation.y,

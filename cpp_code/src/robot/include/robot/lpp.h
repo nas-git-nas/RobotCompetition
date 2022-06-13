@@ -37,8 +37,8 @@
 #define VEL_TURN_ADJUSTMENT 1.2 // empirical factor to match tunring
 #define VEL_MOVE_ADJUSTMENT 0.8
 
-#define LPP_MOVE_VEL_MAX 2.0 // in rad/s
-#define LPP_MOVE_VEL_MIN 1.7 // in rad/s
+#define LPP_MOVE_VEL_MAX 2.5 // in rad/s
+#define LPP_MOVE_VEL_MIN 2.0 // in rad/s
 #define LPP_MOVE_DIST_MAX 100.0 // in cm
 #define LPP_MOVE_DIST_MIN 10.0 // in cm
 #define LPP_MOVE_DELTA ((LPP_MOVE_VEL_MAX-LPP_MOVE_VEL_MIN)/(LPP_MOVE_DIST_MAX-LPP_MOVE_DIST_MIN))
