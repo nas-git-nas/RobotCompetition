@@ -8,6 +8,7 @@
 #include <std_msgs/Float32.h>
 #include <NewPing.h>
 #include <Servo.h>
+#include <DynamixelSerial.h>
 
 /*
  * --- CONSTANTS
@@ -47,6 +48,13 @@
 
 #define PUMP_PIN 25 // pin for the pump
 
+#define DYN_ID 3
+#define DYN_BAUD 1000000
+#define DYN_MAX_TORQUE 768
+#define BASKET_SPEED 150
+#define BASKET_LOW 218
+#define BASKET_HIGH 385
+
 /*
  * --- GLOBAL VARIABLES
  */
@@ -54,6 +62,7 @@ float vel[4] = {0,0,0,0};  // angular velocitiy in rad/s
 bool new_motor_command = false; // command from ROS to activate motor
 bool arm_pos_feedback = false; // feedback on the arm position for ROS
 bool arm_pos_command = false; // command from ROS to activate arm
+bool basket_command = false; // command from ROS to activate basket
 
 unsigned long pingTimer[SONAR_NUM]; // holds the times when the next ping should happen for each sensor.
 unsigned int cm[SONAR_NUM];         // where the ping distances are stored.
@@ -298,6 +307,41 @@ void processArmMovement(void)
   delay(20);
 }
 
+/*
+ * --- Basket FCT.
+ */
+
+void initBasket(void)
+{
+  Dynamixel.begin(DYN_BAUD);
+  Dynamixel.setMaxTorque(DYN_ID,DYN_MAX_TORQUE);
+  Dynamixel.setEndless(DYN_ID,OFF);
+}
+
+void liftBasket(void)
+{
+  Dynamixel.moveSpeed(DYN_ID, BASKET_HIGH, BASKET_SPEED); 
+  Dynamixel.action();
+  delay(100);
+  while (Dynamixel.moving(DYN_ID));
+  delay(200);
+}
+void retractBasket(void)
+{
+  Dynamixel.moveSpeed(DYN_ID, BASKET_LOW, BASKET_SPEED);  // Move the Servo radomly from 200 to 800
+  Dynamixel.action();
+  delay(100);
+  while (Dynamixel.moving(DYN_ID));
+  delay(200);   
+}
+
+void emptyBasket(void)
+{
+  liftBasket();
+  delay(2000);
+  retractBasket();
+  delay(100);
+}
 
 /*
  * --- MAIN
@@ -306,6 +350,7 @@ void setup()
 {
   setupMotors(); // init. motors
   setupArm(); // init. arm
+  initBasket(); // init. basket
 
   pinMode(LED_BUILTIN, OUTPUT);
   nh.initNode();
@@ -339,5 +384,10 @@ void loop()
   if(arm_pos_command) {
     processArmMovement();
     arm_pos_command = false;
+  }
+
+  if(basket_command){
+    emptyBasket();
+    basket_command = false;
   }
 }
