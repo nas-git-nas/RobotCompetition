@@ -124,7 +124,7 @@ int main(int argc, char **argv)
 			ROS_INFO_STREAM("\n----Controller: " << counter);
 		}
 		
-		//controllerCommandMotors(pub_motor_vel, false);
+		controllerCommandMotors(pub_motor_vel, false);
   		
 		ros::spinOnce();
       loop_rate.sleep();

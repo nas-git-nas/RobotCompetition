@@ -19,28 +19,29 @@
 #ifndef DM_H // include header file only once
 #define DM_H
 
-#define DM_SP_REACHED_THR 10 //cm, should be higher than DM_SP_CHANGE
+#define DM_SP_REACHED_THR 17 //cm, should be higher than LPP_SET_POINT_REACHED_THR
 
 #define DM_EXPLORE_NB_MEAS_THR 		1
 #define DM_APPROACH_MAX_NB_FAILS   	2
 #define DM_PICKUP_MAX_NB_FAILS   	2
-#define DM_PICKUP_NB_MEAS_THR			1
+#define DM_PICKUP_NB_MEAS_THR			0
 #define DM_RECYCLING_OFFSET			25
 
 #define DM_WATCHDOG_EXPLORE			8 // in s, clear nb_pickup_fails and nb_approach_fails 
-#define DM_WATCHDOG_MOVE				8 // in s, go to state explore
+#define DM_WATCHDOG_MOVE				10 // in s, go to state explore
 #define DM_WATCHDOG_APPROACH			30 // in s, go to state move
 #define DM_WATCHDOG_PICKUP				5 // in s, length of arm movement when picking up bottles
+#define DM_WATCHDOG_RECYCLE				30 //in s, time before emptying basket
 #define DM_WATCHDOG_EMPTY 				5 // in s, length of basket movement when emptying it
-#define DM_WATCHDOG_END					900 // in s, time before return at the end
+#define DM_WATCHDOG_END					480 // in s, time before return at the end
 
 #define DM_PICKUP_NB_REPEATS			1
 #define DM_EMPTY_NB_REPEATS			1
 
-#define DM_RETURN_POSITION_X			150 // in cm, x position from bottom left corner
-#define DM_RETURN_POSITION_Y			150 // in cm, y position from bottom left corner
-#define DM_RECYCLE_POSITION_X			175 // in cm
-#define DM_RECYCLE_POSITION_Y			175 // in cm
+#define DM_RETURN_POSITION_X			145 // in cm, x position from bottom left corner
+#define DM_RETURN_POSITION_Y			145 // in cm, y position from bottom left corner
+#define DM_RECYCLE_POSITION_X			170 // in cm
+#define DM_RECYCLE_POSITION_Y			170 // in cm
 
 
 // class containing map

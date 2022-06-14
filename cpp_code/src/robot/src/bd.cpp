@@ -152,7 +152,7 @@ std::vector<Bottle> BottleDetection::calcNewBottles(Map map, Pose pose,
 		// add object to bottles vector if it is not on map
 		Bottle temp_bottle;
 		temp_bottle.position = object;
-		temp_bottle.nb_meas = 1;
+		temp_bottle.nb_meas = 2;
 		temp_bottle.updated = true;
 		bottles.push_back(temp_bottle);
 		

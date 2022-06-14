@@ -20,7 +20,7 @@
 
 #define WHEEL_RADIUS 0.0505 // in m
 #define INTER_WHEEL_DISTANCE 0.306 // in m
-#define SET_POINT_DISTANCE_THRESHOLD 8 // in cm, error allowed to reach setpoint
+#define SET_POINT_DISTANCE_THRESHOLD 15 // in cm, error allowed to reach setpoint
 #define TURNING_UPPER_THRESHOLD 0.3491 // in rad, 20°
 #define TURNING_LOWER_THRESHOLD 0.2618 // in rad, 15°
 
@@ -28,7 +28,7 @@
 #define LPP_BOTTLE_ANGLE_THR 0.0873 // rad, equal to 5 degrees
 #define APPROACH_UPPER_THRESHOLD 0.1745 // in rad, 10°
 #define APPROACH_LOWER_THRESHOLD 0.0873 // in rad, 5°
-#define LPP_ARM_LENGTH 35 // in cm
+#define LPP_ARM_LENGTH 32 // in cm
 
 #define LPP_NB_SENSORS 7
 #define LPP_MEAS_HEADING_ANGLE 0.0873 // rad, turn 10 degrees to correct heading 
@@ -37,8 +37,8 @@
 #define VEL_TURN_ADJUSTMENT 1.2 // empirical factor to match tunring
 #define VEL_MOVE_ADJUSTMENT 0.8
 
-#define LPP_MOVE_VEL_MAX 2.5 // in rad/s
-#define LPP_MOVE_VEL_MIN 2.0 // in rad/s
+#define LPP_MOVE_VEL_MAX 2.8 // in rad/s
+#define LPP_MOVE_VEL_MIN 2.5 // in rad/s
 #define LPP_MOVE_DIST_MAX 100.0 // in cm
 #define LPP_MOVE_DIST_MIN 10.0 // in cm
 #define LPP_MOVE_DELTA ((LPP_MOVE_VEL_MAX-LPP_MOVE_VEL_MIN)/(LPP_MOVE_DIST_MAX-LPP_MOVE_DIST_MIN))
@@ -55,14 +55,14 @@
 #define LPP_APPR_BIAS_MAX 0.2 // in %, max. velocity bias depending on error in heading
 #define LPP_APPR_BIAS_DELTA (LPP_APPR_BIAS_MAX/LPP_TURN_ANGLE_MIN)
 
-#define LPP_TURN_VEL_MAX 0.7 // in rad/s
-#define LPP_TURN_VEL_MIN 0.5 // in rad/s
+#define LPP_TURN_VEL_MAX 0.9 // in rad/s
+#define LPP_TURN_VEL_MIN 0.7 // in rad/s
 #define LPP_TURN_ANGLE_MAX 1.571 // in rad, 90°
 #define LPP_TURN_ANGLE_MIN 0.2618 // in rad, 15°
 #define LPP_TURN_DELTA ((LPP_TURN_VEL_MAX-LPP_TURN_VEL_MIN)/(LPP_TURN_ANGLE_MAX-LPP_TURN_ANGLE_MIN))
 #define LPP_TURN_ZERO (LPP_TURN_VEL_MIN - (LPP_TURN_DELTA*LPP_TURN_ANGLE_MIN))
 
-#define LPP_CURVE_VEL_MAX 1.0 // in rad/s
+#define LPP_CURVE_VEL_MAX 1.2 // in rad/s
 #define LPP_CURVE_VEL_MIN 0.4 // in rad/s
 
 #define DEGREE2RAD 0.017453

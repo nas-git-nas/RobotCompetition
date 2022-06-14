@@ -50,7 +50,7 @@
 
 // bd.cpp
 #define BD_VERBOSE_CALC 				false
-#define BD_VERBOSE_SET_ULTRASOUND	false
+#define BD_VERBOSE_SET_ULTRASOUND		true
 #define BD_VERBOSE_GET_BOTTLE			false
 
 #define BD_ULTRASOUND_MAX_DISTANCE 60

@@ -40,9 +40,9 @@
 #define MAX_DISTANCE 50 // maximum distance (in cm) to ping.
 #define PING_INTERVAL 35 // milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
-#define PICK 15 // position of arm when picks up the bottle
-#define REST 80 // position of arm when at rest
-#define DROP 125 // position of arm when drops the bottle
+#define PICK 13 // position of arm when picks up the bottle
+#define REST 100 // position of arm when at rest
+#define DROP 135 // position of arm when drops the bottle
 #define FAST 3 // high speed of arm
 #define SLOW 1 // low speed of arm
 
@@ -94,6 +94,10 @@ void raspberryCB( const std_msgs::Float32MultiArray& rasp2ard_msg){
 
   if(rasp2ard_msg.data[4]==1) {
     arm_pos_command = true;
+  }
+
+   if(rasp2ard_msg.data[5]==1) {
+    basket_command = true;
   }
 }
 
@@ -265,6 +269,8 @@ void setupArm(void)
 {
   myservo.attach(10); // attaches the servo on pin 10 to the servo object
   pinMode(PUMP_PIN, OUTPUT);
+  delay(20);
+  arm_pos_feedback = arm_pos(REST, REST, FAST, SLOW); // arm picks up bottle
 }
 
 bool arm_pos(int init_pos, int final_pos, int high_speed, int slow_speed) {
@@ -293,7 +299,7 @@ bool arm_pos(int init_pos, int final_pos, int high_speed, int slow_speed) {
 
 void processArmMovement(void)
 {
-  //digitalWrite(PUMP_PIN, HIGH); // the pump is ON
+  digitalWrite(PUMP_PIN, HIGH); // the pump is ON
   delay(20);
   arm_pos_feedback = arm_pos(REST, PICK, FAST, SLOW); // arm picks up bottle
   delay(500);
@@ -301,9 +307,11 @@ void processArmMovement(void)
   arm_pos_feedback = arm_pos(PICK, DROP, FAST, SLOW); // arm drops bottle
   delay(20);
   digitalWrite(PUMP_PIN, LOW); // the pump is OFF
-  delay(300);
+  delay(200);
+  arm_pos_feedback = arm_pos(DROP, DROP-20, FAST, SLOW); // arm drops bottle
+  delay(400);
   arm_pos_feedback = false;
-  arm_pos_feedback = arm_pos(DROP, REST, FAST, SLOW); // arm returns to rest position
+  arm_pos_feedback = arm_pos(DROP-20, REST, FAST, SLOW); // arm returns to rest position
   delay(20);
 }
 

@@ -30,24 +30,35 @@ void DecisionMaker::init(Pose pose, ros::Time time, int time_offset)
 	
 	int x = 175;
 	int y = 175;
-	cv::Point p11(x+250,y), p12(x+450,y), p13(x+650,y), p14(x+650,y+100), p15(x+450,y+100),
-			p16(x+250,y+100), p17(x,y);
+	cv::Point p11(x+200,y), p12(x+350,y),p13(x+400,y-25),p14(x+500,y-25),p15(x+625,y+100), 
+		  p16(x+500,y+150),p17(x+400,y+75), p18(x+300,y+100), p19(x+300,y+250),
+		  p110(x+200,y+250), p111(x+100,y+100);
+	cv::Point p21(x,y+200), p22(x,y+300), p23(x+100,y+300), p24(x+100,y+100);
 #ifdef DEBUG_FAKE_MAP
 	p11.x = 500; // 550; //pose.position.x + 200;
 	p11.y = 200; //200; //pose.position.y;
 #endif
 
-	std::vector<cv::Point> first_round;
+	std::vector<cv::Point> first_round, second_round;
 	first_round.push_back(p11);
-	first_round.push_back(p12);
+	/*first_round.push_back(p12);
 	first_round.push_back(p13);
 	first_round.push_back(p14);
 	first_round.push_back(p15);
 	first_round.push_back(p16);
 	first_round.push_back(p17);
+	first_round.push_back(p18);
+	first_round.push_back(p19);
+	first_round.push_back(p110);
+	first_round.push_back(p111);
 	
+	second_round.push_back(p21);
+	second_round.push_back(p22);
+	second_round.push_back(p23);
+	second_round.push_back(p24);*/
 	sps.push_back(first_round);
-	
+	//sps.push_back(second_round);
+
 	dm_state = DM_STATE_EXPLORE;
 	start_time = time;
 	starting_time_offset = ros::Duration(time_offset);
@@ -190,6 +201,17 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 				}
 			}
 		} break;
+
+		case DM_STATE_RECYCLE: {
+			if(watchdog_duration.toSec() > DM_WATCHDOG_RECYCLE) {
+				dm_state = DM_STATE_EMPTY_SEND;
+
+				if(DM_VERBOSE_WATCHDOG) {
+					ROS_INFO_STREAM("dm::watchdog_duration: " << watchdog_duration);
+					ROS_WARN("dm watchdog: recycle -> empty send");
+				}
+			}
+		} break;
 		
 		case DM_STATE_EMPTY_WAIT: {
 			if(watchdog_duration.toSec() > DM_WATCHDOG_EMPTY) {
@@ -218,7 +240,8 @@ void DecisionMaker::watchdog(BottleDetection &bd)
 	// verify if it is time to return
 	if(!competition_end) {
 		ros::Duration delta_time = ros::Time::now()-start_time;
-		delta_time -= starting_time_offset;
+		delta_time += starting_time_offset;
+		ROS_INFO_STREAM("dif: " << starting_time_offset.toSec() << " ,time: " << delta_time.toSec());
 		if(delta_time.toSec() > DM_WATCHDOG_END) {
 			competition_end = true;
 			dm_state = DM_STATE_RETURN;
@@ -345,16 +368,18 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	
 	// calc. optimal position of robot to pick up bottle
 	cv::Point opt_position;
-	opt_position.x = bottle.position.x - cos(theta_error)*LPP_ARM_LENGTH;
-	opt_position.y = bottle.position.x - sin(theta_error)*LPP_ARM_LENGTH;
+	opt_position.x = bottle.position.x - cos(theta_error+pose.heading)*LPP_ARM_LENGTH;
+	opt_position.y = bottle.position.y - sin(theta_error+pose.heading)*LPP_ARM_LENGTH;
 	
 	// verify if optimal position is reached
+	// TODO: replace LPP_arm_LENGTH a little bit larger
 	if(abs(distance-LPP_ARM_LENGTH)<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
-		
+		int last_nb_meas = bottle.nb_meas;
 		bd.clearRecordedBottles();
 		if(DM_VERBOSE_APPROACH) {
 			ROS_INFO("dm::approach: reached optimal distance -> clear recorded bottles");
 		}
+		// TODO: test conditions
 
 		// continue only if bottle is well centered
 		if(verifyHeading(bd)) {
@@ -366,7 +391,12 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 				ROS_WARN("dm::approach: approach -> pickupSend");
 			}
 			return;
-		}
+		}/* else {
+			// verify if bottle measurment is enough certain
+			if(last_nb_meas <= 2) {
+				dm_state = DM_STATE_APPROACH;
+			}
+		}*/
 	}
 	
 	// verify if optimal position is reachable
@@ -397,7 +427,12 @@ bool DecisionMaker::verifyHeading(BottleDetection &bd)
 {
 	std::array<int,BD_NB_SENSORS> meas = bd.getBottleMeas();
 	
-	int left_meas = 0;
+	// one of the front sensors detects something
+	if(meas[2]>0 || meas[3]>0 || meas[4]>0) {
+		return true;
+	}
+
+	/*int left_meas = 0;
 	int right_meas = 0;
 	if(meas[1]>0 && meas[1]<LPP_MEAS_HEADING_THR) {
 		left_meas += 1;
@@ -415,8 +450,8 @@ bool DecisionMaker::verifyHeading(BottleDetection &bd)
 	// bottle is centered
 	if(left_meas==right_meas && meas[3]!=0) {
 		return true;
-	}
-	
+	}*/
+
 	// bottle is not yet centered
 	return false;
 
@@ -498,7 +533,7 @@ void DecisionMaker::stateReturn(Pose pose, Map &map, Command &command)
 	sp.y = DM_RETURN_POSITION_Y;	
 	
 	// verify if position is reached
-	if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {
+	if(calcDistance(sp, pose.position) < DM_SP_REACHED_THR) {
 		dm_state = DM_STATE_RECYCLE;
 		
 		if(DM_VERBOSE_RETURN) {
@@ -522,7 +557,7 @@ void DecisionMaker::recycle(Pose pose, Map &map, Command &command)
 	sp.y = DM_RECYCLE_POSITION_Y;	
 	
 	// verify if position is reached
-	if(calcDistance(sp, pose.position) < SET_POINT_DISTANCE_THRESHOLD) {
+	if(calcDistance(sp, pose.position) < DM_SP_REACHED_THR) {
 		dm_state = DM_STATE_EMPTY_SEND;
 		if(DM_VERBOSE_RETURN) {
 			ROS_WARN("dm::pickupSend: recycle -> emptySend");
@@ -587,6 +622,7 @@ bool DecisionMaker::updateSPIndices(Pose pose)
 	} else if(r_idx < sps.size()-1) { // there is a no set point in same round, but a next round
 		sp_idx = 0;
 		r_idx += 1;
+		dm_state = DM_STATE_RETURN;
 	} else { // there is no next round => return home
 		sp_idx = 0;
 		r_idx = 0;

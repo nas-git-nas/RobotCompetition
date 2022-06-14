@@ -188,6 +188,9 @@ void LPP::updateApproachVelocity(void)
 	
 		int left_meas = 0;
 		int right_meas = 0;
+		if(meas[0]>0 && meas[0]<LPP_MEAS_HEADING_THR) {
+			left_meas += 1;
+		}
 		if(meas[1]>0 && meas[1]<LPP_MEAS_HEADING_THR) {
 			left_meas += 1;
 		}
@@ -200,7 +203,10 @@ void LPP::updateApproachVelocity(void)
 		if(meas[5]>0 && meas[5]<LPP_MEAS_HEADING_THR) {
 			right_meas += 1;
 		}
-		
+		if(meas[6]>0 && meas[6]<LPP_MEAS_HEADING_THR) {
+			right_meas += 1;
+		}
+
 		if(left_meas > right_meas) {
 			robotCurve(10);
 		} else if(left_meas < right_meas) {
@@ -349,11 +355,11 @@ void LPP::robotCurve(float theta_error)
 	float vel_left = 0;
 	float vel_right = 0;
 	if(theta_error>0) {
-		vel_right = LPP_CURVE_VEL_MIN;
+		vel_right = -LPP_CURVE_VEL_MIN;
 		vel_left = -LPP_CURVE_VEL_MAX;
 	} else {
 		vel_right = -LPP_CURVE_VEL_MAX;
-		vel_left = LPP_CURVE_VEL_MIN;
+		vel_left = -LPP_CURVE_VEL_MIN;
 	}
 
 	motor_vel[0] = vel_right;
