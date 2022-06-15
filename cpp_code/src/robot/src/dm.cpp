@@ -31,17 +31,19 @@ void DecisionMaker::init(Pose pose, ros::Time time, int time_offset)
 	int x = 175;
 	int y = 175;
 	cv::Point p11(x+200,y), p12(x+350,y),p13(x+400,y-25),p14(x+500,y-25),p15(x+625,y+100), 
-		  p16(x+500,y+150),p17(x+400,y+75), p18(x+300,y+100), p19(x+300,y+250),
-		  p110(x+200,y+250), p111(x+100,y+100);
-	cv::Point p21(x,y+200), p22(x,y+300), p23(x+100,y+300), p24(x+100,y+100);
+		  p16(x+500,y+100),p17(x+400,y+75), p18(x+400,y+200), p19(x+300,y+200),
+		  p110(x+200,y+100), p111(x+100,y+100);
+	cv::Point p21(x,y+200), p22(x,y+300), p23(x+100,y+300), p24(x+200,y+300), p25(x+200,y+200),
+				p26(x+100,y+100);
+	cv::Point p31(x+500,y+500), p32(x+600,y+600), p33(x+100,y+100);
 #ifdef DEBUG_FAKE_MAP
 	p11.x = 500; // 550; //pose.position.x + 200;
 	p11.y = 200; //200; //pose.position.y;
 #endif
 
-	std::vector<cv::Point> first_round, second_round;
+	std::vector<cv::Point> first_round, second_round, third_round;
 	first_round.push_back(p11);
-	/*first_round.push_back(p12);
+	first_round.push_back(p12);
 	first_round.push_back(p13);
 	first_round.push_back(p14);
 	first_round.push_back(p15);
@@ -55,9 +57,17 @@ void DecisionMaker::init(Pose pose, ros::Time time, int time_offset)
 	second_round.push_back(p21);
 	second_round.push_back(p22);
 	second_round.push_back(p23);
-	second_round.push_back(p24);*/
+	second_round.push_back(p24);
+	second_round.push_back(p25);
+	second_round.push_back(p26);
+	
+	third_round.push_back(p31);
+	third_round.push_back(p32);
+	third_round.push_back(p33);
+	
 	sps.push_back(first_round);
-	//sps.push_back(second_round);
+	sps.push_back(second_round);
+	sps.push_back(third_round);
 
 	dm_state = DM_STATE_EXPLORE;
 	start_time = time;
@@ -372,14 +382,12 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 	opt_position.y = bottle.position.y - sin(theta_error+pose.heading)*LPP_ARM_LENGTH;
 	
 	// verify if optimal position is reached
-	// TODO: replace LPP_arm_LENGTH a little bit larger
 	if(abs(distance-LPP_ARM_LENGTH)<LPP_BOTTLE_DIST_THR && theta_error<LPP_BOTTLE_ANGLE_THR) {
 		int last_nb_meas = bottle.nb_meas;
 		bd.clearRecordedBottles();
 		if(DM_VERBOSE_APPROACH) {
 			ROS_INFO("dm::approach: reached optimal distance -> clear recorded bottles");
 		}
-		// TODO: test conditions
 
 		// continue only if bottle is well centered
 		if(verifyHeading(bd)) {
@@ -391,12 +399,7 @@ void DecisionMaker::approach(Pose pose, Map &map, BottleDetection &bd, Command &
 				ROS_WARN("dm::approach: approach -> pickupSend");
 			}
 			return;
-		}/* else {
-			// verify if bottle measurment is enough certain
-			if(last_nb_meas <= 2) {
-				dm_state = DM_STATE_APPROACH;
-			}
-		}*/
+		}
 	}
 	
 	// verify if optimal position is reachable
@@ -481,8 +484,6 @@ void DecisionMaker::pickupVerify(BottleDetection &bd, Command &command)
 			nb_meas += 1;
 		}
 	}
-	
-	//TODO: change condition  and add delai
 
 	// verify if bottle is still detected
 	if(nb_meas <= DM_PICKUP_NB_MEAS_THR) {
@@ -664,7 +665,6 @@ void DecisionMaker::GPP(Pose pose, Map &map, cv::Point destination, Command &com
 		}
 		command.stop_motor = false;
   	} else {
-  		//TODO: reset map ???
   		ROS_ERROR("dm::gpp::dijkstra: failed to find path");
   		return;
 

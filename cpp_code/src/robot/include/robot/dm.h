@@ -22,7 +22,7 @@
 #define DM_SP_REACHED_THR 17 //cm, should be higher than LPP_SET_POINT_REACHED_THR
 
 #define DM_EXPLORE_NB_MEAS_THR 		1
-#define DM_APPROACH_MAX_NB_FAILS   	2
+#define DM_APPROACH_MAX_NB_FAILS   	3
 #define DM_PICKUP_MAX_NB_FAILS   	2
 #define DM_PICKUP_NB_MEAS_THR			0
 #define DM_RECYCLING_OFFSET			25
