@@ -10,7 +10,7 @@ ultrasonic sensor reading. The file flashed on the arduino is called _motor_sens
 
 ## catkin_ws_raspberry
 This repository contains the source files of the _catkin workspace_ run on a _Raspberry Pi 4_. It is a _ROS noetic_ implementation and does the high level computation.
-The following packages are used:
+The code of the external packages can be found in the corresponding github repositories:
 * __bb_mpu9150__: integration of IMU _mpu9150_ (see https://github.com/vmayoral/bb_mpu9150). The IMU was not used in the final version.
 * __hector_slam__: SLAM algorithm (see http://wiki.ros.org/hector_slam).
 * __robot__: custom package that does all of the work (sensor integration, measurement processing, path planning, decision making, ...).
